@@ -3,6 +3,17 @@
 pretty simple library for just splatting stuff into an sqlite table and getting
 it back out with minimal fuss
 
+## features
+
+* brain-dead easy to use and way better than pickling
+* requires no other libs.  everything is native python
+* built on top of sqlite3 so it's fast and stable
+* easy to use.  just create one and use it like a dictionary. most dict methods supported
+* mostly well tested
+* core code is about 100 lines of code. very easy to understand.
+* automatically compresses data with bz2 in cases that benefit from it
+* will try to jsonify data going into it if it's not already a string
+
 
 ## example's probably the easiest way to describe it
 
@@ -20,11 +31,6 @@ True
 >>> bag['abc']
 {u'y': {u'a': u'blah'}, u'x': 22}
 ```
-
-* anything assigned to the bag that's not a string will get json encoded going
-  in and coming out
-* all data is bz2'd when going into the sqlite3 database to save space
-
 
 ## issues
 
