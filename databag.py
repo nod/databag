@@ -1,8 +1,7 @@
 
 import json
 import sqlite3
-# from bz2 import compress, decompress
-compress = decompress = lambda s: s
+from bz2 import compress, decompress
 from datetime import datetime
 
 class DataBag(object):
