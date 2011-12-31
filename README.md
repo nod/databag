@@ -1,11 +1,12 @@
-# simple object wrapper around sqlite tables
+# PUT YOUR DATA IN A BAG
 
-it's very simple but it's pretty well tested
+pretty simple library for just splatting stuff into an sqlite table and getting
+it back out with minimal fuss
 
 
-## example
+## example's probably the easiest way to describe it
 
-```
+```python
 >>> from databag import DataBag
 >>> bag = DataBag() # will store sqlite db in memory
 >>> bag['xyz'] = 'some string' # will save in the db
