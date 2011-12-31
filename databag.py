@@ -30,6 +30,7 @@ class DataBag(object):
             '''create unique index if not exists
                 idx_dataf_{} on {} (keyf)'''.format(self._bag, self._bag)
             )
+        self._db.commit()
 
     def __getitem__(self, keyf):
         cur = self._db.cursor()
@@ -63,6 +64,7 @@ class DataBag(object):
                 values (?, ?, ?, ?, ?)'''.format(self._bag),
             ( keyf, value, datetime.now(), to_json, is_bz2 )
             )
+        self._db.commit()
 
     def __delitem__(self, keyf):
         """
@@ -76,6 +78,7 @@ class DataBag(object):
         # raise error if nothing deleted
         if cur.rowcount != 1:
             raise KeyError
+        self._db.commit()
 
     def when(self, keyf):
         """
