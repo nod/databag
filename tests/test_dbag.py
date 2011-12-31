@@ -92,7 +92,8 @@ class TestDataBag(unittest.TestCase):
         self.assertListEqual(test_d, [x for x in self.dbag.by_created()])
         self.assertListEqual(
             test_d[::-1],
-            [x for x in self.dbag.by_created(desc=True)])
+            [x for x in self.dbag.by_created(desc=True)]
+            )
 
     def test_in(self):
         k,val = '123', 123
