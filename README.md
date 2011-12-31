@@ -10,8 +10,9 @@ it back out with minimal fuss
 >>> from databag import DataBag
 >>> bag = DataBag() # will store sqlite db in memory
 >>> bag['xyz'] = 'some string' # will save in the db
->>> s = bag['xyz'] # retreives from db
->>>
+>>> s = bag['xyz'] # retrieves from db
+>>> s
+'some string'
 >>> 'xyz' in bag # True
 True
 >>>

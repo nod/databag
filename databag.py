@@ -6,6 +6,13 @@ compress = decompress = lambda s: s
 from datetime import datetime
 
 class DataBag(object):
+    """
+    put your data in a bag.
+
+    ```python
+    bag = DataBag('/tmp/bag.sqlite3')
+    bag['blah'] = 'blip'
+    """
 
     def __init__(self, fpath=':memory:', bag=None):
         if not bag: self._bag = self.__class__.__name__
