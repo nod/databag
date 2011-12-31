@@ -46,7 +46,9 @@ class DataBag(object):
     def __setitem__(self, keyf, value):
         to_json = is_bz2 = False
         if type(value) is not basestring:
-            value = json.dumps(value)
+
+            dtjs = lambda d: d.isoformat() if isinstance(d, datetime) else None
+            value = json.dumps(value, default=dtjs)
             to_json = True
         cur = self._db.cursor()
         if len(value) > 39: # min len of bz2'd string

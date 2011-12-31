@@ -56,6 +56,11 @@ class TestDataBag(unittest.TestCase):
         self.dbag[k] = val
         self.assertEqual(val, self.dbag[k])
 
+    def test_set_datetime(self):
+        k,v = 'dt', datetime.now()
+        self.dbag[k] = v
+        self.assertEqual(v.isoformat(), self.dbag[k])
+
     def test_delitem(self):
         k, val = 'abc', 'defghij'
         self.dbag[k] = val
