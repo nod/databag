@@ -39,6 +39,9 @@ class DataBag(object):
             )
         d = cur.fetchone()
         if d is None: raise KeyError
+        return self._data(d)
+
+    def _data(self, d):
         val_ = decompress(d['data']) if d['bz2'] else d['data']
         return json.loads(val_) if d['json'] else val_
 
@@ -88,10 +91,27 @@ class DataBag(object):
         return d['ts']
 
     def __iter__(self):
+        """
+        returns keys of items in bag, sorted by key
+        """
         cur = self._db.cursor()
         cur.execute('''select keyf from {} order by keyf'''.format(self._bag))
         for k in cur:
             yield k['keyf']
+
+    def by_created(self, desc=False):
+        """
+        returns key,valu from bag in date order
+        """
+        cur = self._db.cursor()
+        order = 'desc' if desc else 'asc'
+        cur.execute(
+            '''select keyf, data, json, bz2
+                from {} order by ts {}'''.format(self._bag, order)
+            )
+        for d in cur:
+            yield d['keyf'], self._data(d)
+
 
     def __contains__(self, keyf):
         cur = self._db.cursor()

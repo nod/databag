@@ -85,6 +85,15 @@ class TestDataBag(unittest.TestCase):
         for k in self.dbag:
             self.assertTrue( self.dbag[k] )
 
+    def test_by_created(self):
+        self.dbag['xxx'] = '123'
+        self.dbag['aaa'] = '123'
+        test_d = [('xxx','123'), ('aaa', '123')]
+        self.assertListEqual(test_d, [x for x in self.dbag.by_created()])
+        self.assertListEqual(
+            test_d[::-1],
+            [x for x in self.dbag.by_created(desc=True)])
+
     def test_in(self):
         k,val = '123', 123
         self.dbag[k] = val
