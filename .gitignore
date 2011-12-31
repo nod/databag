@@ -1,0 +1,28 @@
+# exclude patterns (uncomment them if you want to use them):
+.DS_Store
+*.swp
+*.swo
+*~.nib
+*.log
+*.log.?
+
+media/*
+
+# pip local installs will end up adding a src/ directory. we dont want that in
+# the repo
+src/
+
+# don't add compiled mess to the repo
+*.la
+*.lo
+*.Plo
+*.o
+
+*.pyc
+*.sqlite3
+*.db
+
+*.mp3
+*.mp4
+*.m4p
+*.mov
