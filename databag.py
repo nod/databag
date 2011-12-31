@@ -1,7 +1,8 @@
 
 import json
 import sqlite3
-from bz2 import compress, decompress
+# from bz2 import compress, decompress
+compress = decompress = lambda s: s
 from datetime import datetime
 
 class DataBag(object):
@@ -16,7 +17,7 @@ class DataBag(object):
         cur = self._db.cursor()
         cur.execute(
             '''create table if not exists {} (
-                keyf text, data blob, ts timestamp, json boolean
+                keyf text, data blob, ts timestamp, json boolean, bz2 boolean
                 )'''.format(self._bag)
             )
         cur.execute(
@@ -27,24 +28,29 @@ class DataBag(object):
     def __getitem__(self, keyf):
         cur = self._db.cursor()
         cur.execute(
-            '''select data, json from {} where keyf=?'''.format(self._bag),
+            '''select data, json, bz2 from {} where keyf=?'''.format(self._bag),
             (keyf,)
             )
         d = cur.fetchone()
         if d is None: raise KeyError
-        val_ = decompress(d['data'])
+        val_ = decompress(d['data']) if d['bz2'] else d['data']
         return json.loads(val_) if d['json'] else val_
 
     def __setitem__(self, keyf, value):
-        to_json = False
+        to_json = is_bz2 = False
         if type(value) is not basestring:
             value = json.dumps(value)
             to_json = True
         cur = self._db.cursor()
+        if len(value) > 39: # min len of bz2'd string
+            compressed = compress(value)
+            if len(value) > len(compressed):
+                value = sqlite3.Binary(compressed)
+                is_bz2 = True
         cur.execute(
-            '''INSERT OR REPLACE INTO {} (keyf,data,ts, json) values (?, ?, ?, ?)
-                    '''.format(self._bag),
-            ( keyf, sqlite3.Binary(compress(value)), datetime.now(), to_json )
+            '''INSERT OR REPLACE INTO {} (keyf, data, ts, json, bz2)
+                values (?, ?, ?, ?, ?)'''.format(self._bag),
+            ( keyf, value, datetime.now(), to_json, is_bz2 )
             )
 
     def __delitem__(self, keyf):

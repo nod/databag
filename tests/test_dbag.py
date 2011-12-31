@@ -2,6 +2,9 @@
 import sqlite3
 import unittest
 from datetime import datetime
+from random import shuffle
+from string import letters
+
 
 from databag import DataBag
 
@@ -27,6 +30,29 @@ class TestDataBag(unittest.TestCase):
 
     def test_set_get(self):
         k,val = 'zz', 'more stuff'
+        self.dbag[k] = val
+        self.assertEqual(val, self.dbag[k])
+
+    def test_set_int(self):
+        k,val = 'abc', 555
+        self.dbag[k] = val
+        self.assertEqual(self.dbag[k], val)
+
+    def test_set_list(self):
+        k,val = 'abc', [1,2,3,4,'xyz']
+        self.dbag[k] = val
+        self.assertListEqual(self.dbag[k], val)
+
+    def test_set_dict(self):
+        k,val = 'abc', {'x': 2, '99':55}
+        self.dbag[k] = val
+        self.assertDictEqual(self.dbag[k], val)
+
+    def test_set_long_string(self):
+        x,y = list(letters), list(letters)
+        shuffle(x)
+        shuffle(y)
+        k,val = 'abc',''.join( [ i+j for i in x for j in y ] )
         self.dbag[k] = val
         self.assertEqual(val, self.dbag[k])
 
