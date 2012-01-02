@@ -44,6 +44,7 @@ datetime.datetime(2011, 12, 31, 2, 45, 47, 187621)
 >>> del bag['xyz']
 >>> 'xyz' in bag
 False
+>>> meh = DataBag(bag='other') # set name of storage table
 ```
 
 ## limitations
