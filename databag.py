@@ -14,7 +14,11 @@ class DataBag(object):
     """
 
     def __init__(self, fpath=':memory:', bag=None):
-        if not bag: self._bag = self.__class__.__name__
+
+        # set the table name we'll be storing in
+        if isinstance(bag, basestring): self._bag = bag
+        else: self._bag = self.__class__.__name__
+
         self._db = sqlite3.connect(fpath, detect_types=sqlite3.PARSE_DECLTYPES)
         self._db.row_factory = sqlite3.Row
         self._ensure_table()

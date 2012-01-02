@@ -100,3 +100,7 @@ class TestDataBag(unittest.TestCase):
         self.dbag[k] = val
         self.assertTrue( k in self.dbag )
         self.assertFalse( 'not there' in self.dbag )
+
+    def test_nondefault_tablename(self):
+        self.assertTrue( DataBag(fpath=':memory:', bag='something') )
+
