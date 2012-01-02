@@ -108,7 +108,7 @@ class DataBag(object):
 
     def by_created(self, desc=False):
         """
-        returns key,valu from bag in date order
+        returns key,value from bag in date order
         """
         cur = self._db.cursor()
         order = 'desc' if desc else 'asc'
