@@ -23,6 +23,36 @@ with minimal fuss.
 * Every object gets a ts object attached to it for convenience when it's saved.
   This is accessed via `bag.when('key')`
 
+### versioning
+
+Simple versioning is possible.  Just create your DataBag like:
+
+```python
+>>> dbag = DataBag(versioned=True)
+```
+
+and then you can do things like...
+
+```python
+>>> dbag['blah'] = 'blip'
+>>> dbag['blah'] = 'new blip'
+>>> dbag['blah'] = 'newer blip'
+>>> dbag.get('blah', version=-2)
+u'blip'
+>>> dbag.get('blah', version=-1)
+u'new blip'
+>>> dbag.get('blah')
+u'newer blip'
+>>> dbag['blah']
+u'newer blip'
+```
+
+The default is to keep 10 versions but that can be set with the `history`
+parameter when initializing your bag.
+
+A bag.get(...) method works much like a dictionary's `.get(...)` but with an
+additional keyword argument of `version` that indicates how far back to go.
+
 ## examples
 
 ```python

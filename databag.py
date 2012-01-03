@@ -13,11 +13,14 @@ class DataBag(object):
     bag['blah'] = 'blip'
     """
 
-    def __init__(self, fpath=':memory:', bag=None):
+    def __init__(self, fpath=':memory:', bag=None, versioned=False, history=10):
 
         # set the table name we'll be storing in
         if isinstance(bag, basestring): self._bag = bag
         else: self._bag = self.__class__.__name__
+
+        self._versioned = versioned
+        self._history = history
 
         self._db = sqlite3.connect(fpath, detect_types=sqlite3.PARSE_DECLTYPES)
         self._db.row_factory = sqlite3.Row
@@ -27,20 +30,41 @@ class DataBag(object):
         cur = self._db.cursor()
         cur.execute(
             '''create table if not exists {} (
-                keyf text, data blob, ts timestamp, json boolean, bz2 boolean
+                keyf text, data blob, ts timestamp,
+                json boolean, bz2 boolean, ver int
                 )'''.format(self._bag)
             )
         cur.execute(
             '''create unique index if not exists
-                idx_dataf_{} on {} (keyf)'''.format(self._bag, self._bag)
+                idx_dataf_{} on {} (keyf, ver)'''.format(self._bag, self._bag)
             )
         self._db.commit()
 
-    def __getitem__(self, keyf):
+    def _check_version_arg(self, v):
+        if v is None: return 0
+        if not isinstance(v, int) and not v < 1:
+            raise IndexError('version must be 0 or less')
+        return v
+
+    def get(self, keyf, default=None, version=None):
+        """
+        implements an alternative method for retrieving items from the bag
+        """
+        version = self._check_version_arg(version)
+        if keyf not in self:
+            return default
+        return self.__getitem__(keyf, version)
+
+    def __getitem__(self, keyf, version=None):
+        version = self._check_version_arg(version)
         cur = self._db.cursor()
         cur.execute(
-            '''select data, json, bz2 from {} where keyf=?'''.format(self._bag),
-            (keyf,)
+            '''
+            select data, json, bz2
+            from {}
+            where keyf=? and ver=?
+            '''.format(self._bag),
+            (keyf, version)
             )
         d = cur.fetchone()
         if d is None: raise KeyError
@@ -57,15 +81,52 @@ class DataBag(object):
             dtjs = lambda d: d.isoformat() if isinstance(d, datetime) else None
             value = json.dumps(value, default=dtjs)
             to_json = True
-        cur = self._db.cursor()
         if len(value) > 39: # min len of bz2'd string
             compressed = compress(value)
             if len(value) > len(compressed):
                 value = sqlite3.Binary(compressed)
                 is_bz2 = True
+
+
+        # we'll want this handle to not scope out in a minute so that it gets
+        # commited if we are versioned
+        cur = self._db.cursor()
+
+        # handle versioning
+        if self._versioned:
+            curv = self._db.cursor()
+            curv.execute('''
+                select ver
+                from {} where keyf=?
+                order by ver asc
+                '''.format(self._bag),
+                (keyf,)
+                )
+            for r in curv:
+                ver = r['ver'] - 1
+                if abs(ver) > self._history:
+                    # poor fella, getting whacked
+                    cur.execute('''
+                        delete from {} where keyf=? and ver=?
+                        '''.format(self._bag),
+                        (keyf, r['ver'])
+                        )
+                else:
+                    cur.execute('''
+                        update {} set ver=? where keyf=? and ver=?
+                        '''.format(self._bag),
+                        (ver, keyf, r['ver'])
+                        )
+        else:
+            cur.execute('''
+                delete from {} where keyf=? and ver=0
+                '''.format(self._bag),
+                (keyf,)
+                )
+
         cur.execute(
-            '''INSERT OR REPLACE INTO {} (keyf, data, ts, json, bz2)
-                values (?, ?, ?, ?, ?)'''.format(self._bag),
+            '''INSERT INTO {} (keyf, data, ts, json, bz2, ver)
+                values (?, ?, ?, ?, ?, 0)'''.format(self._bag),
             ( keyf, value, datetime.now(), to_json, is_bz2 )
             )
         self._db.commit()

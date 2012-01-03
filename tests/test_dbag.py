@@ -23,10 +23,33 @@ class TestDataBag(unittest.TestCase):
         self.assertEqual(cur.fetchone()['name'], self.dbag._bag)
 
         # check the unique index
-        sql = '''insert into {} (keyf, data) values ('xx','zzz')
+        sql = '''insert into {} (keyf, data, ver) values ('xx','zzz', 0)
               '''.format( self.dbag._bag )
         cur.execute(sql)
         with self.assertRaises(sqlite3.IntegrityError): cur.execute(sql)
+
+    def test_get(self):
+        k,val = 'blah', 'blip'
+        self.dbag[k] = val
+        self.assertEqual( None, self.dbag.get('whack') )
+        self.assertEqual( 'soup', self.dbag.get('whack', 'soup') )
+        self.assertEqual( 'soup', self.dbag.get('whack', default='soup') )
+        self.assertEqual( val, self.dbag.get(k) )
+
+    def test_versioning(self):
+        d_v = DataBag(versioned=True, history=2)
+        key, orig_text, new_text = 'versioned key', 'blah', 'blip'
+        d_v[key] = orig_text
+        d_v[key] = new_text
+
+        old = d_v.get(key, version=-1)
+        self.assertEqual( old, orig_text )
+        self.assertEqual( d_v[key], new_text )
+
+        # now just create more versions past the history size of 2
+        # exceptions will rise if this fails
+        for x in xrange(1,10):
+            d_v[key] = 'again'*x
 
     def test_set_get(self):
         k,val = 'zz', 'more stuff'
@@ -73,7 +96,6 @@ class TestDataBag(unittest.TestCase):
     def test_when(self):
         k, val = 'xyz', 'abcdef'
         self.dbag[k] = val
-        print self.dbag.when(k)
         self.assertEqual(type(self.dbag.when(k)), datetime)
 
     def test_iter(self):
