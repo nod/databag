@@ -85,6 +85,10 @@ False
   datetime.
 * when saving a dictionary, the keys must be a string in the dictionary.  If
   they are not, they will be when coming back from the bag
-
+* if using versioning, be sure to instantiate your DataBag object with
+  versioning enabled and the same `history` size each time. Failure to do so
+  will cause interesting things to happen, in particular, your databag will act
+  unversioned and overwrite recent updates w/o cascading the historical change
+  to records.
 
 
