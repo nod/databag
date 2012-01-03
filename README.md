@@ -14,7 +14,7 @@ with minimal fuss.
 * Pretty well tested
 * Ideal for running on small vm instances.  Doesn't require any other daemon to
   provide data access
-* Core code is about ~~100~~200 lines - very easy to understand.
+* Core code is about ~~100~~ 200 lines - very easy to understand.
 * Automatically compresses data with bz2 in cases that benefit from it
 * You can always query the data with native sqlite3 libs from other languages
   if you need to.  It's just strings in the database.
