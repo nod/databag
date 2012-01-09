@@ -5,8 +5,13 @@ from datetime import datetime
 from random import shuffle
 from string import letters
 
+# make sure we get our local lib before anything else
+import sys, os.path
+sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
+
 
 from databag import DataBag
+
 
 class TestDataBag(unittest.TestCase):
 
