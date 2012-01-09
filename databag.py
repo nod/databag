@@ -133,7 +133,7 @@ class DataBag(object):
 
     def __delitem__(self, keyf):
         """
-        remove an item from the bag
+        remove an item from the bag, all versions if exist.
         """
         cur = self._db.cursor()
         cur.execute(
