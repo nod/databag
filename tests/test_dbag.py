@@ -10,7 +10,17 @@ import sys, os.path
 sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
 
 
-from databag import DataBag
+from databag import DataBag, ObjectDict
+
+class TestObjDict(unittest.TestCase):
+
+    def test_objdict(self):
+        """
+        super trivial lame test
+        """
+        d = {'x': 'xyz'}
+        o = ObjectDict(d)
+        self.assertEqual( d['x'], o.x )
 
 
 class TestDataBag(unittest.TestCase):

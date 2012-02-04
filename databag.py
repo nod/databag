@@ -4,6 +4,27 @@ import sqlite3
 from bz2 import compress, decompress
 from datetime import datetime
 
+
+# convenience class shamelessly borrowed from the tornado project
+# https://github.com/facebook/tornado/blob/master/tornado/util.py
+class ObjectDict(dict):
+    """
+    Makes a dictionary behave like an object.
+
+    >>> o = ObjectDict({'x':'xyz'})
+    >>> o.x
+    'xyz'
+    """
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+
 class DataBag(object):
     """
     put your data in a bag.
@@ -77,16 +98,15 @@ class DataBag(object):
     def __setitem__(self, keyf, value):
         to_json = is_bz2 = False
         if type(value) is not basestring:
-
             dtjs = lambda d: d.isoformat() if isinstance(d, datetime) else None
             value = json.dumps(value, default=dtjs)
             to_json = True
+
         if len(value) > 39: # min len of bz2'd string
             compressed = compress(value)
             if len(value) > len(compressed):
                 value = sqlite3.Binary(compressed)
                 is_bz2 = True
-
 
         # we'll want this handle to not scope out in a minute so that it gets
         # commited if we are versioned
