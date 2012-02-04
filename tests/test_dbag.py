@@ -12,6 +12,11 @@ sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
 
 from databag import DataBag, ObjectDict
 
+
+class Blah(ObjectDict):
+    def go(self):
+        return "blip"
+
 class TestObjDict(unittest.TestCase):
 
     def test_objdict(self):
@@ -21,6 +26,12 @@ class TestObjDict(unittest.TestCase):
         d = {'x': 'xyz'}
         o = ObjectDict(d)
         self.assertEqual( d['x'], o.x )
+
+    def test_instantiation(self):
+        d = {'x': 'xyz'}
+        blah = Blah(d)
+        self.assertEqual(blah, d)
+
 
 
 class TestDataBag(unittest.TestCase):
