@@ -77,6 +77,11 @@ class TestDataBag(unittest.TestCase):
         for x in xrange(1,10):
             d_v[key] = 'again'*x
 
+    def test_add_no_key(self):
+        val = 'jabberwocky'
+        k = self.dbag.add(val)
+        self.assertEqual(val, self.dbag[k])
+
     def test_set_get(self):
         k,val = 'zz', 'more stuff'
         self.dbag[k] = val
@@ -86,6 +91,15 @@ class TestDataBag(unittest.TestCase):
         k,val = 'abc', 555
         self.dbag[k] = val
         self.assertEqual(self.dbag[k], val)
+
+    def test_lame_uniqueness(self):
+        # this doesn't gaurantee that _genkeys won't ever return a dup, only
+        # that it's not doing it right now in the first n iterations
+        keys = set()
+        while len(keys) < 100:
+            k = self.dbag._genkey()
+            self.assertNotIn(k, keys)
+            keys.add(k)
 
     def test_set_list(self):
         k,val = 'abc', [1,2,3,4,'xyz']
@@ -116,7 +130,7 @@ class TestDataBag(unittest.TestCase):
         del self.dbag[k]
         with self.assertRaises(KeyError): self.dbag[k]
 
-        # test can't delete nonexistent item
+        # ensure can't delete nonexistent item
         with self.assertRaises(KeyError): del self.dbag[k]
 
     def test_when(self):
@@ -129,7 +143,6 @@ class TestDataBag(unittest.TestCase):
         self.dbag['aaa'] = 'def'
         keys = [k for k in self.dbag]
         self.assertListEqual(['aaa','xxx'], keys)
-
         for k in self.dbag:
             self.assertTrue( self.dbag[k] )
 
@@ -144,7 +157,7 @@ class TestDataBag(unittest.TestCase):
             )
 
     def test_in(self):
-        k,val = '123', 123
+        k, val = '123', 123
         self.dbag[k] = val
         self.assertTrue( k in self.dbag )
         self.assertFalse( 'not there' in self.dbag )

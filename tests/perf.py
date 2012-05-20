@@ -15,7 +15,7 @@ sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
 from databag import DataBag
 
 
-def saves(name, dbag, iters=1000):
+def saves(name, dbag, iters=1000, keynames=True):
 
     k = 'xyz{}'
     i = 1000
@@ -24,7 +24,10 @@ def saves(name, dbag, iters=1000):
     start = time()
     print "starting...", name
     while i < endi:
-        dbag[k.format(i)] = 'letters and numbers'
+        if keynames:
+            dbag[k.format(i)] = 'letters and numbers'
+        else:
+            dbag.add('letters and numbers')
         i += 1
     etime = time() - start
     print "   finished."
@@ -34,6 +37,10 @@ def saves(name, dbag, iters=1000):
 
 def main(fpath):
 
+    saves('non-versioned no keys',
+        DataBag(fpath, versioned=False), 1000, False)
+    saves('non-versioned no keys',
+        DataBag(fpath, versioned=False), 10000, False)
     saves('non-versioned', DataBag(fpath, versioned=False), 1000)
     saves('non-versioned', DataBag(fpath, versioned=False), 10000)
     saves('versioned', DataBag(fpath, versioned=True), 1000)

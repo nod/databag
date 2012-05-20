@@ -3,15 +3,23 @@
 Pretty simple library for just splatting stuff to disk and getting it back out
 with minimal fuss.
 
+## wait...
+
+This is sort of like a nosql db on top of an sql db, right?
+
+Yep.
+
 ## features
 
 * Easy to use and quite efficient at accessing relatively large number of items
+  (not talking big data here, but a couple of thousand items works well)
 * Requires no other libs, everything is python batteries included.
 * Built on top of sqlite3 so it's fast and stable (which is included in Python
   stdlib)
 * Easy to use - just create one and use it like a dictionary. Most dict methods
-  supported
-* Pretty well tested
+  supported. Also can add to it like a set by not specifying a key.  One will
+  be created on the fly.
+* Mostly well tested
 * Ideal for running on small vm instances.  Doesn't require any other daemon to
   provide data access
 * Core code is about ~~100~~ 200 lines - very easy to understand.

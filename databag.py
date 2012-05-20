@@ -3,6 +3,24 @@ import json
 import sqlite3
 from bz2 import compress, decompress
 from datetime import datetime
+from uuid import uuid1 as uuid
+
+
+# hash any int to about a b64ish
+CHARSET = '0123456789abcdefghjklmnopqrstvwxyzABCDEFGHJKLMNOPQRSTVWXYZ'
+BASE = len(CHARSET)
+def hashint(num):
+    if num == 0: return '0'
+    if num < 0:
+        sign = '-'
+        num = -num
+    else:
+        sign = ''
+    result = ''
+    while num:
+        result = CHARSET[num % (BASE)] + result
+        num //= BASE
+    return sign + result
 
 
 # convenience class shamelessly borrowed from the tornado project
@@ -94,6 +112,14 @@ class DataBag(object):
     def _data(self, d):
         val_ = decompress(d['data']) if d['bz2'] else d['data']
         return json.loads(val_) if d['json'] else val_
+
+    def _genkey(self):
+        return hashint(uuid().int)
+
+    def add(self, value):
+        k = self._genkey()
+        self[k] = value
+        return k
 
     def __setitem__(self, keyf, value):
         to_json = is_bz2 = False
@@ -204,7 +230,7 @@ class DataBag(object):
     def __contains__(self, keyf):
         cur = self._db.cursor()
         cur.execute(
-            '''select keyf from {} where keyf=?'''.format(self._bag),
+            '''select 1 from {} where keyf=?'''.format(self._bag),
             (keyf,)
             )
         return cur.fetchone() is not None
