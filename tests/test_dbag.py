@@ -9,29 +9,7 @@ from string import letters
 import sys, os.path
 sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
 
-
-from databag import DataBag, ObjectDict
-
-
-class Blah(ObjectDict):
-    def go(self):
-        return "blip"
-
-class TestObjDict(unittest.TestCase):
-
-    def test_objdict(self):
-        """
-        super trivial lame test
-        """
-        d = {'x': 'xyz'}
-        o = ObjectDict(d)
-        self.assertEqual( d['x'], o.x )
-
-    def test_instantiation(self):
-        d = {'x': 'xyz'}
-        blah = Blah(d)
-        self.assertEqual(blah, d)
-
+from databag import DataBag, DictBag, Q, IndexNotFound
 
 
 class TestDataBag(unittest.TestCase):
@@ -164,4 +142,158 @@ class TestDataBag(unittest.TestCase):
 
     def test_nondefault_tablename(self):
         self.assertTrue( DataBag(fpath=':memory:', bag='something') )
+
+
+class TestDictBag(unittest.TestCase):
+
+    def setUp(self):
+        self.dbag = DictBag( indexes=(('name', 'age'),) )
+
+    def test_make_index_name(self):
+        self.assertEqual(
+            self.dbag._make_index_name(('name', 'age')),
+            'idx_DictBag_age_name'
+            )
+
+    def testensure_index(self):
+
+        # test simple index
+        self.dbag.ensure_index(('xx',))
+
+        cur = self.dbag._db.cursor()
+        cur.execute(
+            """
+            select count(1) as cnt from sqlite_master
+                where type='table' and name='idx_DictBag_xx'
+            """
+            )
+        self.assertEqual( 1, cur.fetchone()['cnt'] )
+
+        cur.execute(
+            """
+            select count(1) as cnt from sqlite_master
+                where type='index' and name='i_idx_DictBag_xx'
+            """
+            )
+        self.assertEqual( 1, cur.fetchone()['cnt'] )
+
+        self.dbag.ensure_index(('yy','xx'))
+        cur = self.dbag._db.cursor()
+        cur.execute(
+            """
+            select count(1) as cnt from sqlite_master
+                where type='table' and name='idx_DictBag_xx_yy'
+            """
+            )
+        self.assertEqual( 1, cur.fetchone()['cnt'] )
+
+        cur.execute(
+            """
+            select count(1) as cnt from sqlite_master
+                where type='index' and name='i_idx_DictBag_xx_yy'
+            """
+            )
+        self.assertEqual( 1, cur.fetchone()['cnt'] )
+
+
+    def test_Q_queries(self):
+        x = Q('x')
+        x = x < 44
+        where, params = x.query()
+        self.assertEqual( where, ' "x" < ? ')
+        self.assertEqual(params, [44])
+
+        x = x >= 33
+        where, params = x.query()
+        self.assertEqual( where, ' "x" < ? and "x" >= ? ')
+        self.assertEqual(params, [44, 33])
+
+        x = x == 'stop'
+        where, params = x.query()
+        self.assertEqual( where, ' "x" < ? and "x" >= ? and "x" = ? ')
+        self.assertEqual(params, [44, 33, 'stop'])
+
+        # test a compound statement
+        x = Q('x')
+        x = 10 < x < 20
+        where, params = x.query()
+        self.assertEqual( where, ' "x" > ? and "x" < ? ')
+        self.assertEqual(params, [10, 20])
+
+    def test_find_matching_index(self):
+        self.dbag.ensure_index(('yy','xx'))
+        self.dbag.ensure_index(('yy',))
+        self.dbag.ensure_index(('zz',))
+
+        self.assertEqual(
+            ('xx', 'yy'),
+            self.dbag._find_matching_index(('xx',))
+            )
+
+        self.assertEqual(
+            ('zz',),
+            self.dbag._find_matching_index(('zz',))
+            )
+
+        self.assertEqual(
+            ('xx','yy'),
+            self.dbag._find_matching_index(('xx',))
+            )
+
+        self.assertEqual(
+            None,
+            self.dbag._find_matching_index(('xx','zz'))
+            )
+
+        self.assertEqual(
+            None,
+            self.dbag._find_matching_index(('not there',))
+            )
+
+    def test_only_dicts(self):
+        with self.assertRaises( ValueError ):
+            self.dbag.add('your mom')
+
+    def test_add_to_index(self):
+        self.dbag.ensure_index(('x'))
+        self.dbag.ensure_index(('x', 'y'))
+        self.dbag.ensure_index(('z', 'y'))
+
+        key = self.dbag.add({'x':23})
+        cur = self.dbag._db.cursor()
+
+        idx = self.dbag._make_index_name(('x'))
+        cur.execute('''
+            select count(1) as cnt from {} where keyf = ?
+            '''.format( idx ), (key,))
+        self.assertEqual( 1, cur.fetchone()['cnt'] )
+
+        idx = self.dbag._make_index_name(('x', 'y'))
+        cur.execute('''
+            select count(1) as cnt from {} where x = 23
+            '''.format( idx ))
+        self.assertEqual( 1, cur.fetchone()['cnt'] )
+
+        idx = self.dbag._make_index_name(('y', 'z'))
+        cur.execute('''
+            select count(1) as cnt from {} where keyf = ?
+            '''.format( idx ), (key,))
+        self.assertEqual( 0, cur.fetchone()['cnt'] )
+
+    def test_del_from_index(self):
+        self.dbag.ensure_index(('x', 'y'))
+        self.dbag.add({'x':22})
+
+    def test_find_kwargs(self):
+        first, second = {'x':10, 'y':99}, {'x':100, 'y':999}
+        self.dbag.ensure_index(('x','y'))
+        self.dbag.add(first)
+        self.dbag.add(second)
+
+        with self.assertRaises( IndexNotFound ):
+            self.dbag.findone(abc=23)
+
+        found = self.dbag.findone(x=first['x'])
+        self.assertEqual(found['y'], first['y'])
+
 

@@ -23,26 +23,6 @@ def hashint(num):
     return sign + result
 
 
-# convenience class shamelessly borrowed from the tornado project
-# https://github.com/facebook/tornado/blob/master/tornado/util.py
-class ObjectDict(dict):
-    """
-    Makes a dictionary behave like an object.
-
-    >>> o = ObjectDict({'x':'xyz'})
-    >>> o.x
-    'xyz'
-    """
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(name)
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-
 class DataBag(object):
     """
     put your data in a bag.
@@ -50,6 +30,7 @@ class DataBag(object):
     ```python
     bag = DataBag('/tmp/bag.sqlite3')
     bag['blah'] = 'blip'
+    ```
     """
 
     def __init__(self, fpath=':memory:', bag=None, versioned=False, history=10):
@@ -235,4 +216,212 @@ class DataBag(object):
             )
         return cur.fetchone() is not None
 
+
+class Q(object):
+
+    """
+    builds queries for dictbag instances using find()
+
+    NOTE - if there aren't indexes on the searched fields, this is SLOW
+
+
+    ```python
+    d = DictBag( )
+    d.add({'x':23}))
+    for i in d.find(Q('x')>20, Q('x')<30):
+        ...
+    ```
+
+    NOTE: multiple Q's on the same key get and'd.  OR isn't supported yet.
+
+    You can also create one q object for your query on the same key and use that
+    over and over.
+    ```python
+    d = DictBag( )
+    d.add({'x':23}))
+    x = Q('x')
+    for i in d.find(20<x<30):
+        ...
+
+    ```
+    """
+
+
+    def __init__(self, key):
+        self._k = key
+        self._ands = []
+
+    def query(self):
+        return (
+            "and".join(
+                ' "{}" {} ? '.format(self._k, op) for op,_ in self._ands
+            ),
+            [v for _,v in self._ands]
+        )
+
+    @property
+    def key(self):
+        return self._k
+
+    def __lt__(self, val):
+        self._ands.append(( '<', val ))
+        return self
+
+    def __le__(self, val):
+        self._ands.append(( '<=', val ))
+        return self
+
+    def __gt__(self, val):
+        self._ands.append(( '>', val ))
+        return self
+
+    def __ge__(self, val):
+        self._ands.append(( '>=', val ))
+        return self
+
+    def __eq__(self, val):
+        self._ands.append(( '=', val ))
+        return self
+
+class IndexNotFound(Exception):
+    """
+    raised when a query occurs on cols w/o an index
+    """
+
+class DictBag(DataBag):
+    """
+    convenience bag for dictionaries that adds an index field.  This allows
+    ranged retrievals based on queries on indexed fields.
+
+
+    NOTE - the entire index model here is heavily inspired by goatfish
+    """
+
+    def __init__(self, fpath=':memory:', bag=None, indexes=None):
+
+        super(DictBag, self).__init__(fpath=fpath, bag=bag)
+        self._indexes = set()
+        if indexes:
+            for idx in indexes:
+                self.ensure_index(idx)
+
+    def _make_index_name(self, index):
+        nm = '_'.join(sorted(index))
+        return 'idx_{}_{}'.format(self._bag, nm)
+
+    def ensure_index(self, index):
+        """
+        creates an index on a set of fields in a dict
+
+        Notes
+        - these can be considered sparse.  If a key doesn't exist in a dictionary,
+          it won't be added to the index.
+        - currently, if an item is added before an index is created, the item
+          isn't in the index. this is gross and will be fixed soon.
+        """
+        idx_name = self._make_index_name(index)
+
+        cols = [' "{}" '.format(idx) for idx in index]
+
+        cur = self._db.cursor()
+        cur.execute(
+            '''create table if not exists {} (
+                "id" integer primary key autoincrement not null,
+                "keyf" text,
+                {}
+                )'''.format(
+                    idx_name,
+                    ",".join( " {} text ".format(c) for c in cols )
+                    )
+            )
+        cur.execute(
+            '''create unique index if not exists
+                i_{} on {} ({})'''.format(idx_name, idx_name, ','.join(cols))
+            )
+        self._db.commit()
+        self._indexes.add(tuple(sorted( index )))
+
+    def __setitem__(self, keyf, value):
+
+        if not isinstance(value, dict):
+            raise ValueError('dictbags are for dicts')
+
+        # save it normally expected
+        super(DictBag, self).__setitem__(keyf, value)
+
+        # now add it to the necessary indexes
+        for i in self._indexes:
+            self._add_to_index(keyf, value, i)
+                
+    def _add_to_index(self, key, data, index):
+        keys = set(data.keys())
+        if not keys.intersection(index): return
+
+        idx = self._make_index_name(index)
+        cur = self._db.cursor()
+        vals = [ data.get(i, None) for i in index ]
+        vals.insert(0, key)
+        cur.execute(
+            '''
+            insert into {} (keyf, {}) values ({})
+            '''.format(
+                    idx,
+                    ', '.join('"{}"'.format(i) for i in index),
+                    ', '.join(['?']*len(vals))
+                ),
+            vals
+            )
+        self._db.commit()
+
+    def findone(self, *a, **ka):
+        return self.find(*a, **ka).next()
+
+    def _find_matching_index(self, cols):
+        # find largest index match
+        # treat cols as a set and find the largest intersection
+        # NOTE - for now, if an index doesn't contain all the keys to query
+        #        against, an index is not included
+        colset = set(cols)
+        matching_index, score = max(
+            ((i,len(colset.intersection(i))) for i in self._indexes),
+            key=lambda ii:ii[1]
+            )
+        if score >= len(cols):
+            return matching_index
+        return None
+
+    def find(self, *a, **ka):
+
+        qs = []
+
+        # first, let's do the keyword args, those are straightforward
+        for k,v in ka.iteritems():
+            qs.append( Q(k) == v )
+
+        colset = set( q.key for q in qs )
+        index = self._find_matching_index(colset)
+
+        if not index: raise IndexNotFound()
+        idxname = self._make_index_name(index)
+
+        cur = self._db.cursor()
+
+        where, params = [], []
+        for q in qs:
+            w,p = q.query()
+            where.append(w)
+            params.extend(p)
+
+        rows = cur.execute(
+            '''
+            select db.keyf, db.data, db.bz2, db.json
+            from "{}" as db
+            where exists (
+                select 1 from "{}" as idx
+                where idx.keyf = db.keyf and {}
+                )
+            '''.format(self._bag, idxname, ' and '.join( where ) ),
+            params
+            )
+        return ( self._data(d) for d in rows )
 
