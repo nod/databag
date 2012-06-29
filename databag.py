@@ -352,7 +352,7 @@ class DictBag(DataBag):
         # now add it to the necessary indexes
         for i in self._indexes:
             self._add_to_index(keyf, value, i)
-                
+
     def _add_to_index(self, key, data, index):
         keys = set(data.keys())
         if not keys.intersection(index): return
@@ -391,12 +391,30 @@ class DictBag(DataBag):
         return None
 
     def find(self, *a, **ka):
+        """
+        finds things in the bag
+
+        You can find things via keyword:
+        ```
+        >>> x = DictBag()
+        >>> x.ensure_index(('k1', 'k2'))
+        >>> x.add({'k1':23, 'k2':88})
+        '6ZjcPHsY4WPn63ygxTwpCR'
+        >>> x.find(k2=88).next()
+        {u'k2': 88, u'k1': 23}
+        ```
+        """
 
         qs = []
 
         # first, let's do the keyword args, those are straightforward
         for k,v in ka.iteritems():
             qs.append( Q(k) == v )
+
+
+        # now let's build the query objects
+        qs.extend(a)
+
 
         colset = set( q.key for q in qs )
         index = self._find_matching_index(colset)
@@ -414,7 +432,7 @@ class DictBag(DataBag):
 
         rows = cur.execute(
             '''
-            select db.keyf, db.data, db.bz2, db.json
+            select db.keyf as k, db.data, db.bz2, db.json
             from "{}" as db
             where exists (
                 select 1 from "{}" as idx
@@ -423,5 +441,5 @@ class DictBag(DataBag):
             '''.format(self._bag, idxname, ' and '.join( where ) ),
             params
             )
-        return ( self._data(d) for d in rows )
+        return ( (d['k'], self._data(d)) for d in rows )
 

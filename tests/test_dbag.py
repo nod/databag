@@ -293,7 +293,17 @@ class TestDictBag(unittest.TestCase):
         with self.assertRaises( IndexNotFound ):
             self.dbag.findone(abc=23)
 
-        found = self.dbag.findone(x=first['x'])
+        key, found = self.dbag.findone(x=first['x'])
         self.assertEqual(found['y'], first['y'])
+
+    def test_find_with_query(self):
+        first, second = {'x':10, 'y':99}, {'x':100, 'y':999}
+        self.dbag.ensure_index(('x','y'))
+        self.dbag.add(first)
+        self.dbag.add(second)
+        k,ret = self.dbag.find( 10 < Q('x') < 101 ).next()
+        self.assertEqual( ret, second )
+
+
 
 
