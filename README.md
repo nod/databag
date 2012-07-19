@@ -9,7 +9,7 @@ This is sort of like a nosql db on top of an sql db, right?
 
 Yep.
 
-## features
+# features
 
 * Easy to use and quite efficient at accessing relatively large number of items
   (not talking big data here, but a couple of thousand items works well)
@@ -31,7 +31,7 @@ Yep.
 * Every object gets a ts object attached to it for convenience when it's saved.
   This is accessed via `bag.when('key')`
 
-### versioning
+## versioning
 
 Simple versioning is possible.  Just create your DataBag like:
 
@@ -61,7 +61,9 @@ parameter when initializing your bag.
 A bag.get(...) method works much like a dictionary's `.get(...)` but with an
 additional keyword argument of `version` that indicates how far back to go.
 
-## examples
+# examples
+
+## very simple example
 
 ```python
 >>> from databag import DataBag
@@ -85,6 +87,27 @@ False
 >>> meh = DataBag(bag='other') # set name of storage table
 ```
 
+## DictBag example
+
+```python
+>>> from databag import DictBag, Q
+>>> d = DictBag()
+>>> d.ensure_index(('name', 'age'))
+>>> person1 = {'name':'joe', 'age':23}
+>>> person2 = {'name':'sue', 'age':44}
+>>> d.add(person1)
+'fachVqv6RxsmCXAZgJMJ5p'
+>>> d.add(person2)
+'fpC7cAtx2ZQLadprQR7aa6'
+>>> d.find(Q('age')>40).next()
+(u'fpC7cAtx2ZQLadprQR7aa6', {u'age': 44, u'name': u'sue'})
+>>> age = Q('age')
+>>> [p for p in d.find(20 < age < 50) ]
+[(u'fachVqv6RxsmCXAZgJMJ5p', {u'age': 23, u'name': u'joe'}),
+	(u'fpC7cAtx2ZQLadprQR7aa6', {u'age': 44, u'name': u'sue'})]
+>>>
+```
+
 ## limitations
 
 * although a lot of the basic data types in python are supported for the values
@@ -99,4 +122,10 @@ False
   unversioned and overwrite recent updates w/o cascading the historical change
   to records.
 
+
+## Further notes
+
+The [DictShield library](https://github.com/j2labs/dictshield) makes an
+excellent compliment to creation of models that map and store quite nicely in
+DictBags.
 

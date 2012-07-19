@@ -9,7 +9,7 @@ from string import letters
 import sys, os.path
 sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
 
-from databag import DataBag, DictBag, Q, IndexNotFound
+from ..databag import DataBag, DictBag, Q, IndexNotFound
 
 
 class TestDataBag(unittest.TestCase):

@@ -33,7 +33,10 @@ class DataBag(object):
     ```
     """
 
-    def __init__(self, fpath=':memory:', bag=None, versioned=False, history=10):
+    def __init__(self, fpath=None, bag=None, versioned=False, history=10):
+
+        if not fpath:
+            fpath=':memory:'
 
         # set the table name we'll be storing in
         if isinstance(bag, basestring): self._bag = bag
@@ -297,7 +300,7 @@ class DictBag(DataBag):
     NOTE - the entire index model here is heavily inspired by goatfish
     """
 
-    def __init__(self, fpath=':memory:', bag=None, indexes=None):
+    def __init__(self, fpath=None, bag=None, indexes=None):
 
         super(DictBag, self).__init__(fpath=fpath, bag=bag)
         self._indexes = set()
