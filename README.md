@@ -1,6 +1,6 @@
 # PUT YOUR DATA IN A BAG
 
-![dbag](./raw/master/dbag.png)
+![dbag](/nod/databag/raw/master/dbag.png)
 
 Pretty simple library for just splatting stuff to disk and getting it back out
 with minimal fuss.
