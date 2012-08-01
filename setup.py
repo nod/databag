@@ -11,5 +11,5 @@ setup(
     author='Jeremy Kelley',
     author_email='jeremy@33ad.org',
     url='https://github.com/nod/databag',
-    py_modules=['databag'],
+    packages=['databag', 'databag.contrib'],
     )
