@@ -75,4 +75,18 @@ if dictshield_imported:
             with self.assertRaises(KeyError):
                 FakePerson.find_one(name='nowhere man')
 
+        def test_all(self):
+            self.fp.save()
+            count = 0
+            for x in FakePerson.all():
+                count += 1
+            assert count == 1
+
+            count = 0
+            FakePerson(name='2nd').save()
+            for x in FakePerson.all():
+                print x.name
+                count += 1
+            assert count == 2
+
 

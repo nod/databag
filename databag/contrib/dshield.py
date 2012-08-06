@@ -110,3 +110,12 @@ class BagDocument(Document):
         except StopIteration:
             raise KeyError
 
+    @classmethod
+    def all(cls):
+        """
+        iterates through each item in the dbag and returns object
+        """
+        for x in cls._dbag:
+            yield cls(**cls._dbag[x])
+
+
