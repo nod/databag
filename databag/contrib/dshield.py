@@ -40,23 +40,33 @@ class BagDocument(Document):
 
     def __init__(self, *a, **ka):
         super(BagDocument, self).__init__(*a, **ka)
-        if not self._dbag:
+        type(self).setup_db()
+
+    @classmethod
+    def setup_db(cls):
+        """
+        instantiates the database connection as needed. Can be called repeatedly
+        but should definitely be called prior to any queries.
+        """
+        if not cls._dbag:
 
             # due to metaclassery, the __class_ get smunged so let's give it a
             # hint as to the type of document we're really creating
-            table_name = self._class_name.split('.')[-1]
+            table_name = cls._class_name.split('.')[-1]
 
             BagDocument._dbag = DictBag(
-                fpath=self._Meta.dbpath,
+                fpath=cls._Meta.dbpath,
                 bag=table_name
                 )
 
-            for i in self._Meta.indexes:
+            for i in cls._Meta.indexes:
                 if isinstance(i, basestring):
                     # convenience for just one col in the index
                     BagDocument._dbag.ensure_index((i,))
                 else:
                     BagDocument._dbag.ensure_index(i)
+
+
     def save(self):
         """
         saves a BagDocument in the bag
