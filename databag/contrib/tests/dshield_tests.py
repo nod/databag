@@ -22,19 +22,23 @@ if dictshield_imported:
         name = StringField()
         city = StringField()
 
+        class _Meta(BagDocument._Meta):
+            indexes = ( ('name', 'city'), )
+
 
     class BagMixinTest(unittest.TestCase):
 
-
         def setUp(self):
+            # clear out the db between tests
+            BagDocument._dbag = None
+
             # make joe
             self.fp = FakePerson(name='joe', age=23)
-            FakePerson.ensure_index(('name', 'age'))
 
+        def test_instance(self):
             # is joe still joe as python(joe)?
             assert self.fp.name == self.fp.to_python()['name']
 
-        def test_instance(self):
             assert isinstance(self.fp, FakePerson)
             assert isinstance(self.fp, Document)
             assert isinstance(self.fp, BagDocument)
@@ -64,4 +68,11 @@ if dictshield_imported:
             with self.assertRaises(KeyError):
                 FakePerson.fetch('nobody home')
 
+        def test_from_key(self):
+            k = self.fp.save()
 
+            fp = FakePerson.from_key(k)
+            assert fp._key == self.fp._key
+
+            with self.assertRaises(KeyError):
+                FakePerson.from_key('not there')
