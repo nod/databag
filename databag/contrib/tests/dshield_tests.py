@@ -61,18 +61,18 @@ if dictshield_imported:
         def test_fetch(self):
             k = self.fp.save()
             o = FakePerson.fetch(k)
-            print o._key, self.fp._key
             assert o._key == self.fp._key
 
         def test_fetch_not_there(self):
             with self.assertRaises(KeyError):
                 FakePerson.fetch('nobody home')
 
-        def test_from_key(self):
+        def test_find_one(self):
             k = self.fp.save()
-
-            fp = FakePerson.from_key(k)
+            fp = FakePerson.find_one(name=self.fp.name)
             assert fp._key == self.fp._key
 
             with self.assertRaises(KeyError):
-                FakePerson.from_key('not there')
+                FakePerson.find_one(name='nowhere man')
+
+

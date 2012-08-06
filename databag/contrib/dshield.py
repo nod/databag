@@ -68,13 +68,6 @@ class BagDocument(Document):
         return self._key
 
     @classmethod
-    def from_key(cls, key):
-        """
-        accepts a key of a User and returns the corresponding user object
-        """
-        return cls(_key=key, **cls._dbag[key])
-
-    @classmethod
     def find(cls, *a, **ka):
         """
         accepts a query and returns an iterator of instances of the BagDocument
@@ -97,4 +90,13 @@ class BagDocument(Document):
         """
         return cls(_key=key, **(cls._dbag[key]))
 
+    @classmethod
+    def find_one(cls, *a, **ka):
+        """
+        return just one BagDocument by key
+        """
+        try:
+            return cls.find(*a, **ka).next()
+        except StopIteration:
+            raise KeyError
 
