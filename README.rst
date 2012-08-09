@@ -1,4 +1,6 @@
 .. image:: https://github.com/nod/databag/raw/master/dbag.png
+    :align: right
+    :alt: d bag
 
 PUT YOUR DATA IN A BAG
 ========================
@@ -27,7 +29,7 @@ features
 * Mostly well tested
 * Ideal for running on small vm instances.  Doesn't require any other daemon to
   provide data access
-* Core code is about ~~100~~ 200 lines - very easy to understand.
+* Core code is about 400 lines - very easy to understand.
 * Automatically compresses data with bz2 in cases that benefit from it
 * You can always query the data with native sqlite3 libs from other languages
   if you need to.  It's just strings in the database.
@@ -130,6 +132,8 @@ Further notes
 -------------
 
 The `DictShield library`_ makes an excellent compliment to creation of models
-that map and store quite nicely in DictBags.
+that map and store quite nicely in DictBags.  A contrib class is included in
+databag that inherits from dictshield.document.Document and adds some helpers
+for storing/retrieving DictShield models from DictBags.
 
 .. _DictShield library : https://github.com/j2labs/dictshield
