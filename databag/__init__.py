@@ -338,7 +338,7 @@ class DictBag(DataBag):
                     )
             )
         cur.execute(
-            '''create unique index if not exists
+            '''create index if not exists
                 i_{} on {} ({})'''.format(idx_name, idx_name, ','.join(cols))
             )
         self._db.commit()

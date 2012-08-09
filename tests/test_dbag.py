@@ -305,5 +305,11 @@ class TestDictBag(unittest.TestCase):
         self.assertEqual( ret, second )
 
 
+    def test_not_unique(self):
+        first, second = {'x':'same', 'y':99}, {'x':'same', 'y':999}
+        self.dbag.ensure_index('x')
+        # will throw exception if problems
+        self.dbag.add(first)
+        self.dbag.add(second)
 
 
