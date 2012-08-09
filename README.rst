@@ -67,6 +67,7 @@ examples
 ========
 
 ::
+
     >>> from databag import DataBag
     >>> bag = DataBag() # will store sqlite db in memory
     >>> bag['xyz'] = 'some string' # will save in the db
@@ -91,6 +92,7 @@ DictBag example
 ---------------
 
 ::
+
     >>> from databag import DictBag, Q
     >>> d = DictBag()
     >>> d.ensure_index(('name', 'age'))
