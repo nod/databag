@@ -99,6 +99,18 @@ class BagDocument(Document):
         cls._dbag.ensure_index(*a, **ka)
 
     @classmethod
+    def exists(cls, ko):
+        """
+        allows you to see if an item exists in the bag w/o actually retrieving
+        it.
+        ko can be a key or a BagDocument object
+        """
+        if isinstance(ko, BagDocument):
+            return ko._key in cls._dbag
+        else:
+            return ko in cls._dbag
+
+    @classmethod
     def fetch(cls, key):
         """
         return just one BagDocument by key

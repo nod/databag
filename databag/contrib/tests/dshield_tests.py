@@ -80,6 +80,15 @@ if dictshield_imported:
             with self.assertRaises(KeyError):
                 FakePerson.find_one(name='nowhere man')
 
+        def test_exists(self):
+            k = self.fp.save()
+
+            # check key
+            assert FakePerson.exists(k)
+
+            # check for object
+            assert FakePerson.exists(self.fp)
+
         def test_all(self):
             self.fp.save()
             count = 0
