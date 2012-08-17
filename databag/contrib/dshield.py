@@ -67,10 +67,15 @@ class BagDocument(Document):
                     BagDocument._dbag.ensure_index(i)
 
 
-    def save(self):
+    def save(self, key=None):
         """
         saves a BagDocument in the bag
         """
+
+        # we can override our key by passing one in explicitly
+        if key: self._key = key
+
+        # now save in the db
         if self._key:
             self._dbag[self._key] = self.to_python()
         else:

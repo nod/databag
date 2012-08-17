@@ -49,6 +49,11 @@ if dictshield_imported:
             k = self.fp.save()
             assert self.fp._key == k
 
+            new_k = 'himom'
+            self.fp.save(new_k)
+            assert self.fp._key == new_k
+
+        def test_bag_name(self):
             # the db table name comes from __class__ but that gets munged so
             # let's make sure it was set appropriately
             assert self.fp._dbag._bag == 'FakePerson'
