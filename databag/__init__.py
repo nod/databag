@@ -1,5 +1,6 @@
 
 import json
+import operator
 import sqlite3
 from bz2 import compress, decompress
 from datetime import datetime
@@ -28,19 +29,18 @@ class DataBag(object):
     put your data in a bag.
 
     ```python
-    bag = DataBag('/tmp/bag.sqlite3')
+    bag = DataBag('dbag', '/tmp/bag.sqlite3')
     bag['blah'] = 'blip'
     ```
     """
 
-    def __init__(self, fpath=None, bag=None, versioned=False, history=10):
+    def __init__(self, table=None, fpath=None, versioned=False, history=10):
 
         if not fpath:
             fpath=':memory:'
 
         # set the table name we'll be storing in
-        if isinstance(bag, basestring): self._bag = bag
-        else: self._bag = self.__class__.__name__
+        self._table = table
 
         self._versioned = versioned
         self._history = history
@@ -55,11 +55,12 @@ class DataBag(object):
             '''create table if not exists {} (
                 keyf text, data blob, ts timestamp,
                 json boolean, bz2 boolean, ver int
-                )'''.format(self._bag)
+                )'''.format(self._table)
             )
         cur.execute(
             '''create unique index if not exists
-                idx_dataf_{} on {} (keyf, ver)'''.format(self._bag, self._bag)
+                idx_dataf_{} on {} (keyf, ver)'''.format(self._table,
+                                                         self._table)
             )
         self._db.commit()
 
@@ -86,7 +87,7 @@ class DataBag(object):
             select data, json, bz2
             from {}
             where keyf=? and ver=?
-            '''.format(self._bag),
+            '''.format(self._table),
             (keyf, version)
             )
         d = cur.fetchone()
@@ -129,7 +130,7 @@ class DataBag(object):
                 select ver
                 from {} where keyf=?
                 order by ver asc
-                '''.format(self._bag),
+                '''.format(self._table),
                 (keyf,)
                 )
             for r in curv:
@@ -138,25 +139,25 @@ class DataBag(object):
                     # poor fella, getting whacked
                     cur.execute('''
                         delete from {} where keyf=? and ver=?
-                        '''.format(self._bag),
+                        '''.format(self._table),
                         (keyf, r['ver'])
                         )
                 else:
                     cur.execute('''
                         update {} set ver=? where keyf=? and ver=?
-                        '''.format(self._bag),
+                        '''.format(self._table),
                         (ver, keyf, r['ver'])
                         )
         else:
             cur.execute('''
                 delete from {} where keyf=? and ver=0
-                '''.format(self._bag),
+                '''.format(self._table),
                 (keyf,)
                 )
 
         cur.execute(
             '''INSERT INTO {} (keyf, data, ts, json, bz2, ver)
-                values (?, ?, ?, ?, ?, 0)'''.format(self._bag),
+                values (?, ?, ?, ?, ?, 0)'''.format(self._table),
             ( keyf, value, datetime.now(), to_json, is_bz2 )
             )
         self._db.commit()
@@ -167,7 +168,7 @@ class DataBag(object):
         """
         cur = self._db.cursor()
         cur.execute(
-            '''delete from {} where keyf = ?'''.format(self._bag),
+            '''delete from {} where keyf = ?'''.format(self._table),
             (keyf,)
             )
         # raise error if nothing deleted
@@ -181,7 +182,7 @@ class DataBag(object):
         """
         cur = self._db.cursor()
         cur.execute(
-            '''select ts from {} where keyf=?'''.format(self._bag),
+            '''select ts from {} where keyf=?'''.format(self._table),
             (keyf,)
             )
         d = cur.fetchone()
@@ -193,7 +194,7 @@ class DataBag(object):
         returns keys of items in bag, sorted by key
         """
         cur = self._db.cursor()
-        cur.execute('''select keyf from {} order by keyf'''.format(self._bag))
+        cur.execute('''select keyf from {} order by keyf'''.format(self._table))
         for k in cur:
             yield k['keyf']
 
@@ -205,7 +206,7 @@ class DataBag(object):
         order = 'desc' if desc else 'asc'
         cur.execute(
             '''select keyf, data, json, bz2
-                from {} order by ts {}'''.format(self._bag, order)
+                from {} order by ts {}'''.format(self._table, order)
             )
         for d in cur:
             yield d['keyf'], self._data(d)
@@ -214,7 +215,7 @@ class DataBag(object):
     def __contains__(self, keyf):
         cur = self._db.cursor()
         cur.execute(
-            '''select 1 from {} where keyf=?'''.format(self._bag),
+            '''select 1 from {} where keyf=?'''.format(self._table),
             (keyf,)
             )
         return cur.fetchone() is not None
@@ -229,7 +230,7 @@ class Q(object):
 
 
     ```python
-    d = DictBag( )
+    d = DictBag('dbag')
     d.add({'x':23}))
     for i in d.find(Q('x')>20, Q('x')<30):
         ...
@@ -240,7 +241,7 @@ class Q(object):
     You can also create one q object for your query on the same key and use that
     over and over.
     ```python
-    d = DictBag( )
+    d = DictBag('dbag')
     d.add({'x':23}))
     x = Q('x')
     for i in d.find(20<x<30):
@@ -300,9 +301,9 @@ class DictBag(DataBag):
     NOTE - the entire index model here is heavily inspired by goatfish
     """
 
-    def __init__(self, fpath=None, bag=None, indexes=None):
+    def __init__(self, table=None, fpath=None, indexes=None):
 
-        super(DictBag, self).__init__(fpath=fpath, bag=bag)
+        super(DictBag, self).__init__(table=table, fpath=fpath)
         self._indexes = set()
         if indexes:
             for idx in indexes:
@@ -310,7 +311,7 @@ class DictBag(DataBag):
 
     def _make_index_name(self, index):
         nm = '_'.join(sorted(index))
-        return 'idx_{}_{}'.format(self._bag, nm)
+        return 'idx_{}_{}'.format(self._table, nm)
 
     def ensure_index(self, index):
         """
@@ -345,11 +346,10 @@ class DictBag(DataBag):
         self._indexes.add(tuple(sorted( index )))
 
     def __setitem__(self, keyf, value):
-
         if not isinstance(value, dict):
             raise ValueError('dictbags are for dicts')
 
-        # save it normally expected
+        # save it normally as expected
         super(DictBag, self).__setitem__(keyf, value)
 
         # now add it to the necessary indexes
@@ -399,10 +399,9 @@ class DictBag(DataBag):
 
         You can find things via keyword:
         ```
-        >>> x = DictBag()
+        >>> x = DictBag('dbag')
         >>> x.ensure_index(('k1', 'k2'))
-        >>> x.add({'k1':23, 'k2':88})
-        '6ZjcPHsY4WPn63ygxTwpCR'
+        >>> id_ = x.add({'k1':23, 'k2':88})
         >>> x.find(k2=88).next()
         {u'k2': 88, u'k1': 23}
         ```
@@ -414,10 +413,8 @@ class DictBag(DataBag):
         for k,v in ka.iteritems():
             qs.append( Q(k) == v )
 
-
         # now let's build the query objects
         qs.extend(a)
-
 
         colset = set( q.key for q in qs )
         index = self._find_matching_index(colset)
@@ -441,8 +438,45 @@ class DictBag(DataBag):
                 select 1 from "{}" as idx
                 where idx.keyf = db.keyf and {}
                 )
-            '''.format(self._bag, idxname, ' and '.join( where ) ),
+            '''.format(self._table, idxname, ' and '.join( where ) ),
             params
             )
         return ( (d['k'], self._data(d)) for d in rows )
+
+    def _search_query(self, qdict):
+        """ returns Q object """
+        # {'y':111, 'x':{'$lt':23}}
+
+        # build the keyword->operator mapping.
+        # we could do trixy stuff here but i like the explicit listing
+        # of what's supported so nothing gets slipped in, module wise
+        ops = {
+            '$or': operator.or_,
+            '$gt': operator.gt,
+            '$lt': operator.lt,
+            '$ge': operator.ge,
+            '$le': operator.le,
+            '$ne': operator.ne,
+            }
+
+        qs = []
+
+        for k,v in qdict.iteritems():
+            if not isinstance(v, dict):
+                # normal keyword match
+                qs.append( Q(k) == v)
+            else:
+                for o_, val in v.iteritems():
+                    if o_ not in ops:
+                        raise NotImplementedError(
+                            "Non-supported operator detected: " + k
+                        )
+                    op = ops[o_]
+                    qs.append( op(Q(k), val) )
+        return qs
+
+    def search(self, qdict):
+        qs = self._search_query(qdict)
+        print "QS", qs
+        return self.find( *qs )
 

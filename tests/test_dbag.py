@@ -15,20 +15,20 @@ from ..databag import DataBag, DictBag, Q, IndexNotFound
 class TestDataBag(unittest.TestCase):
 
     def setUp(self):
-        self.dbag = DataBag()
+        self.dbag = DataBag('dbag')
 
     def test_ensure_table(self):
         cur = self.dbag._db.cursor()
 
         cur.execute(
             '''SELECT name FROM sqlite_master WHERE type='table' AND name=?''',
-            (self.dbag._bag,)
+            (self.dbag._table,)
             )
-        self.assertEqual(cur.fetchone()['name'], self.dbag._bag)
+        self.assertEqual(cur.fetchone()['name'], self.dbag._table)
 
         # check the unique index
         sql = '''insert into {} (keyf, data, ver) values ('xx','zzz', 0)
-              '''.format( self.dbag._bag )
+              '''.format( self.dbag._table )
         cur.execute(sql)
         with self.assertRaises(sqlite3.IntegrityError): cur.execute(sql)
 
@@ -112,6 +112,7 @@ class TestDataBag(unittest.TestCase):
         with self.assertRaises(KeyError): del self.dbag[k]
 
     def test_when(self):
+        # really just want a datetime back
         k, val = 'xyz', 'abcdef'
         self.dbag[k] = val
         self.assertEqual(type(self.dbag.when(k)), datetime)
@@ -141,18 +142,18 @@ class TestDataBag(unittest.TestCase):
         self.assertFalse( 'not there' in self.dbag )
 
     def test_nondefault_tablename(self):
-        self.assertTrue( DataBag(fpath=':memory:', bag='something') )
+        self.assertTrue( DataBag(table='something', fpath=':memory:') )
 
 
 class TestDictBag(unittest.TestCase):
 
     def setUp(self):
-        self.dbag = DictBag( indexes=(('name', 'age'),) )
+        self.dbag = DictBag( table='testdbag', indexes=(('name', 'age'),) )
 
     def test_make_index_name(self):
         self.assertEqual(
             self.dbag._make_index_name(('name', 'age')),
-            'idx_DictBag_age_name'
+            'idx_testdbag_age_name'
             )
 
     def testensure_index(self):
@@ -164,7 +165,7 @@ class TestDictBag(unittest.TestCase):
         cur.execute(
             """
             select count(1) as cnt from sqlite_master
-                where type='table' and name='idx_DictBag_xx'
+                where type='table' and name='idx_testdbag_xx'
             """
             )
         self.assertEqual( 1, cur.fetchone()['cnt'] )
@@ -172,7 +173,7 @@ class TestDictBag(unittest.TestCase):
         cur.execute(
             """
             select count(1) as cnt from sqlite_master
-                where type='index' and name='i_idx_DictBag_xx'
+                where type='index' and name='i_idx_testdbag_xx'
             """
             )
         self.assertEqual( 1, cur.fetchone()['cnt'] )
@@ -182,7 +183,7 @@ class TestDictBag(unittest.TestCase):
         cur.execute(
             """
             select count(1) as cnt from sqlite_master
-                where type='table' and name='idx_DictBag_xx_yy'
+                where type='table' and name='idx_testdbag_xx_yy'
             """
             )
         self.assertEqual( 1, cur.fetchone()['cnt'] )
@@ -190,11 +191,10 @@ class TestDictBag(unittest.TestCase):
         cur.execute(
             """
             select count(1) as cnt from sqlite_master
-                where type='index' and name='i_idx_DictBag_xx_yy'
+                where type='index' and name='i_idx_testdbag_xx_yy'
             """
             )
         self.assertEqual( 1, cur.fetchone()['cnt'] )
-
 
     def test_Q_queries(self):
         x = Q('x')
@@ -304,6 +304,21 @@ class TestDictBag(unittest.TestCase):
         k,ret = self.dbag.find( 10 < Q('x') < 101 ).next()
         self.assertEqual( ret, second )
 
+    def test_not_implemented_search(self):
+        with self.assertRaises(NotImplementedError):
+            self.dbag.search({'x':{'$zzz':44}})
+
+    def test_search(self):
+        first, second = {'x':10, 'y':99}, {'x':100, 'y':999}
+        self.dbag.ensure_index(('x','y'))
+        self.dbag.add(first)
+        self.dbag.add(second)
+
+        k,ret = self.dbag.search({'x':10}).next()
+        self.assertEqual( ret, first )
+
+        k,ret = self.dbag.search({'x':{'$gt':10}}).next()
+        self.assertEqual( ret, second )
 
     def test_not_unique(self):
         first, second = {'x':'same', 'y':99}, {'x':'same', 'y':999}
