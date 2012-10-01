@@ -37,6 +37,7 @@ class BagDocument(Document):
         """
         indexes = tuple()
         dbpath = DBPATH
+        table = None
 
     def __init__(self, *a, **ka):
         super(BagDocument, self).__init__(*a, **ka)
@@ -52,11 +53,13 @@ class BagDocument(Document):
 
             # due to metaclassery, the __class_ get smunged so let's give it a
             # hint as to the type of document we're really creating
-            table_name = cls._class_name.split('.')[-1]
+            table_name = cls._Meta.table or cls._class_name.split('.')[-1]
+            if not cls._Meta.table:
+                cls._Meta.table = cls._class_name.split('.')[-1]
 
             BagDocument._dbag = DictBag(
                 fpath=cls._Meta.dbpath,
-                bag=table_name
+                table=cls._Meta.table
                 )
 
             for i in cls._Meta.indexes:

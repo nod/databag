@@ -56,7 +56,7 @@ if dictshield_imported:
         def test_bag_name(self):
             # the db table name comes from __class__ but that gets munged so
             # let's make sure it was set appropriately
-            assert self.fp._dbag._bag == 'FakePerson'
+            assert self.fp._dbag._table == 'FakePerson'
 
         def test_find(self):
             self.fp.save()
