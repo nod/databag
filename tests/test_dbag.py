@@ -1,4 +1,5 @@
 
+import operator
 import sqlite3
 import unittest
 from datetime import datetime
@@ -9,7 +10,7 @@ from string import letters
 import sys, os.path
 sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
 
-from ..databag import DataBag, DictBag, Q, IndexNotFound
+from ..databag import DataBag, DictBag, Q
 
 
 class TestDataBag(unittest.TestCase):
@@ -156,8 +157,7 @@ class TestDictBag(unittest.TestCase):
             'idx_testdbag_age_name'
             )
 
-    def testensure_index(self):
-
+    def test_ensure_index(self):
         # test simple index
         self.dbag.ensure_index(('xx',))
 
@@ -208,6 +208,11 @@ class TestDictBag(unittest.TestCase):
         self.assertEqual( where, ' "x" < ? and "x" >= ? ')
         self.assertEqual(params, [44, 33])
 
+        self.assertEqual(
+            x._and_ops,
+            set( [ (operator.lt, 44), (operator.ge, 33) ] )
+        )
+
         x = x == 'stop'
         where, params = x.query()
         self.assertEqual( where, ' "x" < ? and "x" >= ? and "x" = ? ')
@@ -220,7 +225,7 @@ class TestDictBag(unittest.TestCase):
         self.assertEqual( where, ' "x" > ? and "x" < ? ')
         self.assertEqual(params, [10, 20])
 
-    def test_find_matching_index(self):
+    def test_matching_index(self):
         self.dbag.ensure_index(('yy','xx'))
         self.dbag.ensure_index(('yy',))
         self.dbag.ensure_index(('zz',))
@@ -284,19 +289,16 @@ class TestDictBag(unittest.TestCase):
         self.dbag.ensure_index(('x', 'y'))
         self.dbag.add({'x':22})
 
-    def test_find_kwargs(self):
+    def test_find_kwargs_with_index(self):
         first, second = {'x':10, 'y':99}, {'x':100, 'y':999}
         self.dbag.ensure_index(('x','y'))
         self.dbag.add(first)
         self.dbag.add(second)
 
-        with self.assertRaises( IndexNotFound ):
-            self.dbag.findone(abc=23)
-
-        key, found = self.dbag.findone(x=first['x'])
+        key, found = self.dbag.find_one(x=first['x'])
         self.assertEqual(found['y'], first['y'])
 
-    def test_find_with_query(self):
+    def test_find_with_Q(self):
         first, second = {'x':10, 'y':99}, {'x':100, 'y':999}
         self.dbag.ensure_index(('x','y'))
         self.dbag.add(first)
@@ -306,7 +308,7 @@ class TestDictBag(unittest.TestCase):
 
     def test_not_implemented_search(self):
         with self.assertRaises(NotImplementedError):
-            self.dbag.search({'x':{'$zzz':44}})
+            self.dbag.find({'x':{'$zzz':44}})
 
     def test_search(self):
         first, second = {'x':10, 'y':99}, {'x':100, 'y':999}
@@ -314,10 +316,10 @@ class TestDictBag(unittest.TestCase):
         self.dbag.add(first)
         self.dbag.add(second)
 
-        k,ret = self.dbag.search({'x':10}).next()
+        k,ret = self.dbag.find({'x':10}).next()
         self.assertEqual( ret, first )
 
-        k,ret = self.dbag.search({'x':{'$gt':10}}).next()
+        k,ret = self.dbag.find({'x':{'$gt':10}}).next()
         self.assertEqual( ret, second )
 
     def test_not_unique(self):
@@ -327,4 +329,74 @@ class TestDictBag(unittest.TestCase):
         self.dbag.add(first)
         self.dbag.add(second)
 
+
+class QuerySetMixin(object):
+
+    # just a set of tests to run, this is used with a real TestCase that sets up
+    # the dbag, decides to use indexes or not, then adds the appropriate data
+
+    @classmethod
+    def add_data(cls):
+        cls.dbag.add( {'x':11} )
+        cls.dbag.add( {'x': 50, 'y':'abc'} )
+        cls.dbag.add( {'x':99, 'y':'jdk'} )
+        cls.dbag.add( {'x': 500, 'y':'abc'} )
+
+    def test_no_key(self):
+        key, found = self.dbag.find_one( nokey = 1 )
+        assert key is None
+
+    def test_find_keyword(self):
+        key, found = self.dbag.find_one(x=11)
+        assert found
+
+    def test_find_correct_num_of_matches(self):
+        # should be only one match
+        assert 1 == len( [ 1 for i in self.dbag.find(x=99) ] )
+
+        # should be two matches
+        assert 2 == len( [ 1 for i in self.dbag.find({'x':{'$gt':50}}) ] )
+
+    def test_simple_compound_qdict(self):
+        key, found = self.dbag.find_one( { 'x': {'$gt':50, '$lt':100} } )
+        assert found
+
+    def test_empty_args(self):
+        key, found = self.dbag.find_one()
+        assert found['x'] == 500 # should be last one added
+
+    def test_keyword_qdict(self):
+        key, found = self.dbag.find_one({'x':{'$gte':99}}, y='abc')
+        assert found['x'] == 500
+
+    def test_gt(self):
+        assert 2 == len( [ 1 for i in self.dbag.find({'x':{'$gt':50}}) ] )
+
+    def test_gte(self):
+        assert 3 == len( [ 1 for i in self.dbag.find({'x':{'$gte':50}}) ] )
+
+    def test_lt(self):
+        assert 1 == len( [ 1 for i in self.dbag.find({'x':{'$lt':50}}) ] )
+
+    def test_lte(self):
+        assert 2 == len( [ 1 for i in self.dbag.find({'x':{'$lte':50}}) ] )
+
+    def test_ne(self):
+        assert 3 == len( [ 1 for i in self.dbag.find({'x':{'$ne':50}}) ] )
+
+
+class TestQueriesNoIndexes(QuerySetMixin, unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dbag = DictBag( table='testdbag' )
+        cls.add_data()
+
+
+class TestMyriadOfQueriesWithIndexes(QuerySetMixin, unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dbag = DictBag( table='testdbag', indexes=(('x', 'y'),) )
+        cls.add_data()
 

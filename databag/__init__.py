@@ -211,7 +211,6 @@ class DataBag(object):
         for d in cur:
             yield d['keyf'], self._data(d)
 
-
     def __contains__(self, keyf):
         cur = self._db.cursor()
         cur.execute(
@@ -250,10 +249,19 @@ class Q(object):
     ```
     """
 
+    ops = {
+        '>': operator.gt,
+        '<': operator.lt,
+        '>=': operator.ge,
+        '<=': operator.le,
+        '=': operator.eq,
+        '!=': operator.ne,
+        }
 
     def __init__(self, key):
         self._k = key
-        self._ands = []
+        self._ands = list()
+        self._and_ops = set()
 
     def query(self):
         return (
@@ -267,30 +275,36 @@ class Q(object):
     def key(self):
         return self._k
 
-    def __lt__(self, val):
-        self._ands.append(( '<', val ))
+    # we have to use a list instead of a set on the _ands because in order to
+    # test the generated sql, we need to be able to predict the order of the
+    # params output and a set() lacks that attribute
+
+    def _cond(self, sym, val):
+        """ builds the anded sets of sql syntax and operations for the query """
+        cond = (sym, val)
+        op = Q.ops.get(sym)
+        if cond not in self._ands:
+            self._ands.append(cond)
+            self._and_ops.add( (op, val) )
         return self
+
+    def __lt__(self, val):
+        return self._cond( '<', val )
 
     def __le__(self, val):
-        self._ands.append(( '<=', val ))
-        return self
+        return self._cond( '<=', val )
 
     def __gt__(self, val):
-        self._ands.append(( '>', val ))
-        return self
+        return self._cond( '>', val )
 
     def __ge__(self, val):
-        self._ands.append(( '>=', val ))
-        return self
+        return self._cond( '>=', val )
 
     def __eq__(self, val):
-        self._ands.append(( '=', val ))
-        return self
+        return self._cond( '=', val )
 
-class IndexNotFound(Exception):
-    """
-    raised when a query occurs on cols w/o an index
-    """
+    def __ne__(self, val):
+        return self._cond( '!=', val)
 
 class DictBag(DataBag):
     """
@@ -327,6 +341,15 @@ class DictBag(DataBag):
 
         cols = [' "{}" '.format(idx) for idx in index]
 
+
+        # big gross note - notice the column type on the index table value
+        # field, it's real.  if we try to genericize it to TEXT then sqlite does
+        # numeric comparisons based on text values (meaning things like 500 < 9)
+        # since sqlite3 is a pretty forgiving db, we can splat all sorts of data
+        # into a REAL column and it gets stored and treated properly.  by saying
+        # it's REAL we basically say "try to be constrained as possible".
+        # Is this a hack? yep.  Does it work? yep.
+
         cur = self._db.cursor()
         cur.execute(
             '''create table if not exists {} (
@@ -335,7 +358,7 @@ class DictBag(DataBag):
                 {}
                 )'''.format(
                     idx_name,
-                    ",".join( " {} text ".format(c) for c in cols )
+                    ",".join( " {} real ".format(c) for c in cols )
                     )
             )
         cur.execute(
@@ -376,36 +399,85 @@ class DictBag(DataBag):
             )
         self._db.commit()
 
-    def findone(self, *a, **ka):
-        return self.find(*a, **ka).next()
+    def find_one(self, *a, **ka):
+        """
+        returns a (key,dict) for the matching query, or (None,None) if not
+        found in the bag
+        """
+        try:
+            return self.find(*a, **ka).next()
+        except StopIteration:
+            return None, None
 
     def _find_matching_index(self, cols):
         # find largest index match
         # treat cols as a set and find the largest intersection
         # NOTE - for now, if an index doesn't contain all the keys to query
         #        against, an index is not included
-        colset = set(cols)
-        matching_index, score = max(
-            ((i,len(colset.intersection(i))) for i in self._indexes),
-            key=lambda ii:ii[1]
-            )
-        if score >= len(cols):
-            return matching_index
+
+        if self._indexes:
+            colset = set(cols)
+            matching_index, score = max(
+                ((i,len(colset.intersection(i))) for i in self._indexes),
+                key=lambda ii:ii[1]
+                )
+            if score >= len(cols):
+                return matching_index
         return None
 
-    def find(self, *a, **ka):
+    def _slow_search(self, qs):
         """
-        finds things in the bag
+        perform an iteration over the entire set and return anything matching
+        the query filter.
 
-        You can find things via keyword:
-        ```
-        >>> x = DictBag('dbag')
-        >>> x.ensure_index(('k1', 'k2'))
-        >>> id_ = x.add({'k1':23, 'k2':88})
-        >>> x.find(k2=88).next()
-        {u'k2': 88, u'k1': 23}
-        ```
+        NOTE - we got here because there wasn't an existing index covering ALL
+            key filters
+        OPTIMIZE - we should use any partial indexes to reduce our potential
+            corpus, then iterate over that
         """
+        print [ (q.key, q._and_ops) for q in qs ]
+        for k,d in self.by_created(desc=True):
+            # rip through each document in the db...
+            # performing the queries on each one
+            matched_all = True
+            for q in qs:
+                # on each document, first see if the key even exists
+                qk = q.key
+                if qk not in d:
+                    matched_all = False
+                    break
+
+                # now check each query against the doc
+                dv = d.get(qk)
+                print "SEARCHING", dv
+                for op, val in q._and_ops:
+                    print "DOC", d
+
+                    print "COMPARING WITH", qk, val, op, dv
+                    if not op(dv, val):
+                        matched_all = False
+                        print "FAILED WITH", qk, val, op, dv
+                        break
+                # if not all( op(dv, val) for op,val in q._and_ops ):
+                    # matched_all = False
+                    # break
+            if matched_all:
+                # if we got here, we matched all queries
+                yield k, d
+
+    def _findQ(self, *a, **ka):
+        """
+        accepts keyword arguments for eq matches on symbols.  Also accepts
+        Q arguments for filtering.
+
+        acts as generator of results
+        """
+
+        # shortcircuit for empty a and ka
+        if not a and not ka:
+            for k,data in self.by_created(desc=True):
+                yield k,data
+            return
 
         qs = []
 
@@ -413,16 +485,25 @@ class DictBag(DataBag):
         for k,v in ka.iteritems():
             qs.append( Q(k) == v )
 
-        # now let's build the query objects
+        # now let's build the query objects, *a should be a list of Q objs
         qs.extend(a)
 
         colset = set( q.key for q in qs )
         index = self._find_matching_index(colset)
 
-        if not index: raise IndexNotFound()
-        idxname = self._make_index_name(index)
+        if not index:
+            # OPTIMIZE
+            # gotta do it the slow way...
+            # note, this could be massively optimized but at the moment if
+            # there's not an index for every queried column, we will do it the
+            # slow way for everything. We should, if we find a partial index, do
+            # a limited search then drop to iteration for the remaining query
+            # filter
+            for k,doc in self._slow_search(qs):
+                yield k,doc
+            return
 
-        cur = self._db.cursor()
+        idxname = self._make_index_name(index)
 
         where, params = [], []
         for q in qs:
@@ -430,6 +511,9 @@ class DictBag(DataBag):
             where.append(w)
             params.extend(p)
 
+        print "WHERE,PARAMS", where, params
+
+        cur = self._db.cursor()
         rows = cur.execute(
             '''
             select db.keyf as k, db.data, db.bz2, db.json
@@ -441,7 +525,9 @@ class DictBag(DataBag):
             '''.format(self._table, idxname, ' and '.join( where ) ),
             params
             )
-        return ( (d['k'], self._data(d)) for d in rows )
+        # return ( (d['k'], self._data(d)) for d in rows )
+        for d in rows:
+            yield d['k'], self._data(d)
 
     def _search_query(self, qdict):
         """ returns Q object """
@@ -451,11 +537,10 @@ class DictBag(DataBag):
         # we could do trixy stuff here but i like the explicit listing
         # of what's supported so nothing gets slipped in, module wise
         ops = {
-            '$or': operator.or_,
             '$gt': operator.gt,
             '$lt': operator.lt,
-            '$ge': operator.ge,
-            '$le': operator.le,
+            '$gte': operator.ge,
+            '$lte': operator.le,
             '$ne': operator.ne,
             }
 
@@ -463,9 +548,12 @@ class DictBag(DataBag):
 
         for k,v in qdict.iteritems():
             if not isinstance(v, dict):
-                # normal keyword match
+                # treat like normal keyword match {'y':111}
                 qs.append( Q(k) == v)
             else:
+                # OPTIMIZE - does not check for formatting other than an
+                # existing op...
+                # dictionary.. for now assume it's formatted properly
                 for o_, val in v.iteritems():
                     if o_ not in ops:
                         raise NotImplementedError(
@@ -475,8 +563,40 @@ class DictBag(DataBag):
                     qs.append( op(Q(k), val) )
         return qs
 
-    def search(self, qdict):
-        qs = self._search_query(qdict)
-        print "QS", qs
-        return self.find( *qs )
+    def find(self, *qdicts, **kwa):
+        """
+        finds things in the bag, acts as a generator of results on a filter
+
+        You can find things via keyword:
+        ```
+        >>> x = DictBag('dbag')
+        >>> id_ = x.add({'k1':23, 'k2':88})
+        >>> x.find(k2=88).next()
+        {u'k2': 88, u'k1': 23}
+
+        And via Q objects
+        >>> x.find( Q('k1') > 20 )
+        {u'k2': 88, u'k1': 23}
+
+        And also with dict queries
+        >>> x.find( {'k1': {'$gt':20} } )
+        {u'k2': 88, u'k1': 23}
+
+        And even a combination of ...
+        >>> x.find( k2=88, {'k1': 23})
+        ```
+        """
+        qs = []
+        for qd in qdicts:
+            if isinstance(qd, Q):
+                # Q objects just get appended directly
+                qs.append( qd )
+            elif isinstance(qd, dict):
+                # if it's a query dict, convert to Q object first
+                qs.extend( self._search_query(qd) )
+            else:
+                # I DON'T KNOW YOU
+                raise TypeError('query must be dict or Q object')
+        return self._findQ( *qs, **kwa )
+
 
