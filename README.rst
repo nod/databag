@@ -11,9 +11,7 @@ with minimal fuss.
 wait...
 -------
 
-This is sort of like a nosql db on top of an sql db, right?
-
-Yep.
+Yep - it's a nosql type, document oriented database wrapper on top of sqlite3.
 
 features
 ========
@@ -26,7 +24,7 @@ features
 * Easy to use - just create one and use it like a dictionary. Most dict methods
   supported. Also can add to it like a set by not specifying a key.  One will
   be created on the fly.
-* Mostly well tested
+* Pretty well tested
 * Ideal for running on small vm instances.  Doesn't require any other daemon to
   provide data access
 * Core code is about 400 lines - very easy to understand.
@@ -112,6 +110,16 @@ DictBag example
         (u'fpC7cAtx2ZQLadprQR7aa6', {u'age': 44, u'name': u'sue'})]
     >>>
 
+Mongo Style Queries
+-------------------
+
+::
+
+    >>> d.find( {'age':23}
+    -- or --
+    >>> d.find( {'age':{"$gt":20}} )
+
+
 limitations
 -----------
 
@@ -131,9 +139,10 @@ limitations
 Further notes
 -------------
 
-The `DictShield library`_ makes an excellent compliment to creation of models
-that map and store quite nicely in DictBags.  A contrib class is included in
-databag that inherits from dictshield.document.Document and adds some helpers
-for storing/retrieving DictShield models from DictBags.
+The `Schematics library`_ makes an excellent compliment to creation of models
+that map and store quite nicely in DictBags.  A contrib class is included for
+DictShield (precursor to Schematics) in databag that inherits from
+dictshield.document.Document and adds some helpers for storing/retrieving
+DictShield models from DictBags.  A Schematics mixin is planned.
 
-.. _DictShield library : https://github.com/j2labs/dictshield
+.. _Schematics library : https://github.com/j2labs/dictshield
