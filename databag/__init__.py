@@ -52,15 +52,14 @@ class DataBag(object):
     def _ensure_table(self):
         cur = self._db.cursor()
         cur.execute(
-            '''create table if not exists {} (
+            '''create table if not exists {tbl} (
                 keyf text, data blob, ts timestamp,
                 json boolean, bz2 boolean, ver int
-                )'''.format(self._table)
+                )'''.format(tbl=self._table)
             )
         cur.execute(
             '''create unique index if not exists
-                idx_dataf_{} on {} (keyf, ver)'''.format(self._table,
-                                                         self._table)
+                idx_dataf_{tbl} on {tbl} (keyf, ver)'''.format(tbl=self._table)
             )
         self._db.commit()
 
@@ -85,9 +84,9 @@ class DataBag(object):
         cur.execute(
             '''
             select data, json, bz2
-            from {}
+            from {tbl}
             where keyf=? and ver=?
-            '''.format(self._table),
+            '''.format(tbl=self._table),
             (keyf, version)
             )
         d = cur.fetchone()
@@ -128,9 +127,9 @@ class DataBag(object):
             curv = self._db.cursor()
             curv.execute('''
                 select ver
-                from {} where keyf=?
+                from {tbl} where keyf=?
                 order by ver asc
-                '''.format(self._table),
+                '''.format(tbl=self._table),
                 (keyf,)
                 )
             for r in curv:
@@ -138,26 +137,26 @@ class DataBag(object):
                 if abs(ver) > self._history:
                     # poor fella, getting whacked
                     cur.execute('''
-                        delete from {} where keyf=? and ver=?
-                        '''.format(self._table),
+                        delete from {tbl} where keyf=? and ver=?
+                        '''.format(tbl=self._table),
                         (keyf, r['ver'])
                         )
                 else:
                     cur.execute('''
-                        update {} set ver=? where keyf=? and ver=?
-                        '''.format(self._table),
+                        update {tbl} set ver=? where keyf=? and ver=?
+                        '''.format(tbl=self._table),
                         (ver, keyf, r['ver'])
                         )
         else:
             cur.execute('''
-                delete from {} where keyf=? and ver=0
-                '''.format(self._table),
+                delete from {tbl} where keyf=? and ver=0
+                '''.format(tbl=self._table),
                 (keyf,)
                 )
 
         cur.execute(
-            '''INSERT INTO {} (keyf, data, ts, json, bz2, ver)
-                values (?, ?, ?, ?, ?, 0)'''.format(self._table),
+            '''INSERT INTO {tbl} (keyf, data, ts, json, bz2, ver)
+                values (?, ?, ?, ?, ?, 0)'''.format(tbl=self._table),
             ( keyf, value, datetime.now(), to_json, is_bz2 )
             )
         self._db.commit()
@@ -168,7 +167,7 @@ class DataBag(object):
         """
         cur = self._db.cursor()
         cur.execute(
-            '''delete from {} where keyf = ?'''.format(self._table),
+            '''delete from {tbl} where keyf = ?'''.format(tbl=self._table),
             (keyf,)
             )
         # raise error if nothing deleted
@@ -182,7 +181,7 @@ class DataBag(object):
         """
         cur = self._db.cursor()
         cur.execute(
-            '''select ts from {} where keyf=?'''.format(self._table),
+            '''select ts from {tbl} where keyf=?'''.format(tbl=self._table),
             (keyf,)
             )
         d = cur.fetchone()
@@ -194,7 +193,9 @@ class DataBag(object):
         returns keys of items in bag, sorted by key
         """
         cur = self._db.cursor()
-        cur.execute('''select keyf from {} order by keyf'''.format(self._table))
+        cur.execute('''select keyf from {tbl} order by keyf'''.format(
+            tbl=self._table
+        ) )
         for k in cur:
             yield k['keyf']
 
@@ -206,7 +207,9 @@ class DataBag(object):
         order = 'desc' if desc else 'asc'
         cur.execute(
             '''select keyf, data, json, bz2
-                from {} order by ts {}'''.format(self._table, order)
+                from {tbl} order by ts {o}'''.format(
+                    tbl=self._table, o=order
+                    )
             )
         for d in cur:
             yield d['keyf'], self._data(d)
@@ -214,7 +217,7 @@ class DataBag(object):
     def __contains__(self, keyf):
         cur = self._db.cursor()
         cur.execute(
-            '''select 1 from {} where keyf=?'''.format(self._table),
+            '''select 1 from {tbl} where keyf=?'''.format(tbl=self._table),
             (keyf,)
             )
         return cur.fetchone() is not None
@@ -266,7 +269,7 @@ class Q(object):
     def query(self):
         return (
             "and".join(
-                ' "{}" {} ? '.format(self._k, op) for op,_ in self._ands
+                ' "{k}" {v} ? '.format(k=self._k, v=op) for op,_ in self._ands
             ),
             [v for _,v in self._ands]
         )
@@ -325,7 +328,7 @@ class DictBag(DataBag):
 
     def _make_index_name(self, index):
         nm = '_'.join(sorted(index))
-        return 'idx_{}_{}'.format(self._table, nm)
+        return 'idx_{t}_{x}'.format(t=self._table, x=nm)
 
     def ensure_index(self, index):
         """
@@ -339,7 +342,7 @@ class DictBag(DataBag):
         """
         idx_name = self._make_index_name(index)
 
-        cols = [' "{}" '.format(idx) for idx in index]
+        cols = [' "{i}" '.format(i=idx) for idx in index]
 
 
         # big gross note - notice the column type on the index table value
@@ -352,18 +355,18 @@ class DictBag(DataBag):
 
         cur = self._db.cursor()
         cur.execute(
-            '''create table if not exists {} (
+            '''create table if not exists {i} (
                 "id" integer primary key autoincrement not null,
                 "keyf" text,
-                {}
+                {j}
                 )'''.format(
-                    idx_name,
-                    ",".join( " {} real ".format(c) for c in cols )
+                    i=idx_name,
+                    j=",".join( " {} real ".format(c) for c in cols )
                     )
             )
         cur.execute(
             '''create index if not exists
-                i_{} on {} ({})'''.format(idx_name, idx_name, ','.join(cols))
+                i_{i} on {i} ({c})'''.format(i=idx_name, c=','.join(cols))
             )
         self._db.commit()
         self._indexes.add(tuple(sorted( index )))
@@ -389,11 +392,11 @@ class DictBag(DataBag):
         vals.insert(0, key)
         cur.execute(
             '''
-            insert into {} (keyf, {}) values ({})
+            insert into {i} (keyf, {k}) values ({v})
             '''.format(
-                    idx,
-                    ', '.join('"{}"'.format(i) for i in index),
-                    ', '.join(['?']*len(vals))
+                    i=idx,
+                    k=', '.join('"{}"'.format(i) for i in index),
+                    v=', '.join(['?']*len(vals))
                 ),
             vals
             )
@@ -517,12 +520,12 @@ class DictBag(DataBag):
         rows = cur.execute(
             '''
             select db.keyf as k, db.data, db.bz2, db.json
-            from "{}" as db
+            from "{t}" as db
             where exists (
-                select 1 from "{}" as idx
-                where idx.keyf = db.keyf and {}
+                select 1 from "{i}" as idx
+                where idx.keyf = db.keyf and {w}
                 )
-            '''.format(self._table, idxname, ' and '.join( where ) ),
+            '''.format(t=self._table, i=idxname, w=' and '.join( where ) ),
             params
             )
         # return ( (d['k'], self._data(d)) for d in rows )
