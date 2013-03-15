@@ -41,7 +41,7 @@ versioning
 
 Simple versioning is possible.  Just create your DataBag like:::
 
-    >>> dbag = DataBag(versioned=True)
+    >>> dbag = DataBag(versioned=True, fpath='/tmp/some.db')
 
 and then you can do things like...::
 
@@ -59,6 +59,9 @@ and then you can do things like...::
 
 The default is to keep 10 versions but that can be set with the `history`
 parameter when initializing your bag.
+
+If you don't specify an `fpath` argument, the database is only created in memory.  
+By specifying `fpath`, you specify the location of the file on the filesystem.
 
 A bag.get(...) method works much like a dictionary's `.get(...)` but with an
 additional keyword argument of `version` that indicates how far back to go.
