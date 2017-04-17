@@ -438,7 +438,6 @@ class DictBag(DataBag):
         OPTIMIZE - we should use any partial indexes to reduce our potential
             corpus, then iterate over that
         """
-        print [ (q.key, q._and_ops) for q in qs ]
         for k,d in self.by_created(desc=True):
             # rip through each document in the db...
             # performing the queries on each one
@@ -452,14 +451,9 @@ class DictBag(DataBag):
 
                 # now check each query against the doc
                 dv = d.get(qk)
-                print "SEARCHING", dv
                 for op, val in q._and_ops:
-                    print "DOC", d
-
-                    print "COMPARING WITH", qk, val, op, dv
                     if not op(dv, val):
                         matched_all = False
-                        print "FAILED WITH", qk, val, op, dv
                         break
                 # if not all( op(dv, val) for op,val in q._and_ops ):
                     # matched_all = False
@@ -513,8 +507,6 @@ class DictBag(DataBag):
             w,p = q.query()
             where.append(w)
             params.extend(p)
-
-        print "WHERE,PARAMS", where, params
 
         cur = self._db.cursor()
         rows = cur.execute(

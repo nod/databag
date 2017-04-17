@@ -22,7 +22,6 @@ def saves(name, dbag, iters=1000, keynames=True):
     endi = i + iters
     step = 50 # . every step
     start = time()
-    print "starting...", name
     while i < endi:
         if keynames:
             dbag[k.format(i)] = 'letters and numbers'
@@ -30,9 +29,6 @@ def saves(name, dbag, iters=1000, keynames=True):
             dbag.add('letters and numbers')
         i += 1
     etime = time() - start
-    print "   finished."
-    print "   {} saves.".format(iters), "elapsed time:{}s".format(time()-start)
-    print "   {} saves/sec".format(iters/float(etime))
 
 
 def main(fpath):
@@ -49,7 +45,6 @@ def main(fpath):
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
-        print "usage: perf <path to sqlite file>"
         raise SystemExit
 
     main(sys.argv[1])

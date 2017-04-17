@@ -15,8 +15,6 @@ from ... import Q
 
 if dictshield_imported:
 
-    print "NOTE: running dictshield tests"
-
 
     class FakePerson(BagDocument):
         name = StringField()
@@ -99,7 +97,6 @@ if dictshield_imported:
             count = 0
             FakePerson(name='2nd').save()
             for x in FakePerson.all():
-                print x.name
                 count += 1
             assert count == 2
 
