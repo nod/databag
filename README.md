@@ -1,3 +1,4 @@
+
 <img src="https://github.com/nod/databag/raw/master/misc/dbag.png" />
 
 # PUT YOUR DATA IN A BAG
@@ -7,6 +8,9 @@ with minimal fuss.
 
 It's sort of a long term file based dictionary with enhanced range type
 filtering.
+
+
+**updated for python3**
 
 ## wait...
 
@@ -27,6 +31,7 @@ Yep - it's a nosql type, document oriented database wrapper on top of sqlite3.
   provide data access
 - Core code is about 400 lines - very easy to understand.
 - Automatically compresses data with bz2 in cases that benefit from it
+- offers versioned records if you so choose
 - You can always query the data with native sqlite3 libs from other languages
   if you need to.  It's just strings in the database.
 - Since the underlying datafile is sqlite3, multiple processes can work with
