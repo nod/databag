@@ -27,3 +27,12 @@ perf: venv
 	$(VENV_DIR)/bin/python src/tests/perf.py $(PERF_DB)
 	@ echo Running perf with memory db
 	$(VENV_DIR)/bin/python src/tests/perf.py ":memory:"
+
+pkg: venv
+	$(VENV_DIR)/bin/pip install --upgrade setuptools wheel
+	$(VENV_DIR)/bin/python3 setup.py sdist bdist_wheel
+
+pkg_upload:
+	$(VENV_DIR)/bin/pip install --upgrade twine
+	$(VENV_DIR)/bin/twine upload dist/*
+
