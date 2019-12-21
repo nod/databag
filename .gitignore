@@ -10,10 +10,6 @@ build/
 dist/
 MANIFEST
 
-# pip local installs will end up adding a src/ directory. we dont want that in
-# the repo
-src/
-
 # don't add compiled mess to the repo
 *.la
 *.lo
@@ -28,3 +24,6 @@ src/
 *.mp4
 *.m4p
 *.mov
+
+databag.egg-info
+pyvenv

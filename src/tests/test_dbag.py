@@ -4,13 +4,9 @@ import sqlite3
 import unittest
 from datetime import datetime
 from random import shuffle
-from string import letters
+from string import ascii_letters as letters
 
-# make sure we get our local lib before anything else
-import sys, os.path
-sys.path = [os.path.abspath(os.path.dirname(__file__)) + '../'] + sys.path
-
-from ..databag import DataBag, DictBag, Q
+from databag import DataBag, DictBag, Q
 
 
 class TestDataBag(unittest.TestCase):
@@ -53,7 +49,7 @@ class TestDataBag(unittest.TestCase):
 
         # now just create more versions past the history size of 2
         # exceptions will rise if this fails
-        for x in xrange(1,10):
+        for x in range(1,10):
             d_v[key] = 'again'*x
 
     def test_add_no_key(self):
@@ -303,7 +299,7 @@ class TestDictBag(unittest.TestCase):
         self.dbag.ensure_index(('x','y'))
         self.dbag.add(first)
         self.dbag.add(second)
-        k,ret = self.dbag.find( 10 < Q('x') < 101 ).next()
+        k,ret = next(self.dbag.find( 10 < Q('x') < 101 ))
         self.assertEqual( ret, second )
 
     def test_not_implemented_search(self):
@@ -316,10 +312,10 @@ class TestDictBag(unittest.TestCase):
         self.dbag.add(first)
         self.dbag.add(second)
 
-        k,ret = self.dbag.find({'x':10}).next()
+        k,ret = next(self.dbag.find({'x':10}))
         self.assertEqual( ret, first )
 
-        k,ret = self.dbag.find({'x':{'$gt':10}}).next()
+        k,ret = next(self.dbag.find({'x':{'$gt':10}}))
         self.assertEqual( ret, second )
 
     def test_not_unique(self):

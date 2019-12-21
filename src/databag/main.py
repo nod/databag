@@ -5,7 +5,7 @@ import sqlite3
 from bz2 import compress, decompress
 from datetime import datetime
 from uuid import uuid1 as uuid
-
+from platform import python_version
 
 # hash any int to about a b64ish
 CHARSET = '0123456789abcdefghjklmnopqrstvwxyzABCDEFGHJKLMNOPQRSTVWXYZ'
@@ -35,16 +35,11 @@ class DataBag(object):
     """
 
     def __init__(self, table=None, fpath=None, versioned=False, history=10):
-
         if not fpath:
             fpath=':memory:'
-
-        # set the table name we'll be storing in
         self._table = table
-
         self._versioned = versioned
         self._history = history
-
         self._db = sqlite3.connect(fpath, detect_types=sqlite3.PARSE_DECLTYPES)
         self._db.row_factory = sqlite3.Row
         self._ensure_table()
@@ -94,7 +89,7 @@ class DataBag(object):
         return self._data(d)
 
     def _data(self, d):
-        val_ = decompress(d['data']) if d['bz2'] else d['data']
+        val_ = decompress(d['data']).decode() if d['bz2'] else d['data']
         return json.loads(val_) if d['json'] else val_
 
     def _genkey(self):
@@ -107,13 +102,13 @@ class DataBag(object):
 
     def __setitem__(self, keyf, value):
         to_json = is_bz2 = False
-        if type(value) is not basestring:
+        if not isinstance(value, str):
             dtjs = lambda d: d.isoformat() if isinstance(d, datetime) else None
             value = json.dumps(value, default=dtjs)
             to_json = True
 
         if len(value) > 39: # min len of bz2'd string
-            compressed = compress(value)
+            compressed = compress(value.encode())
             if len(value) > len(compressed):
                 value = sqlite3.Binary(compressed)
                 is_bz2 = True
@@ -309,6 +304,7 @@ class Q(object):
     def __ne__(self, val):
         return self._cond( '!=', val)
 
+
 class DictBag(DataBag):
     """
     convenience bag for dictionaries that adds an index field.  This allows
@@ -408,7 +404,7 @@ class DictBag(DataBag):
         found in the bag
         """
         try:
-            return self.find(*a, **ka).next()
+            return next(self.find(*a, **ka))
         except StopIteration:
             return None, None
 
@@ -479,7 +475,7 @@ class DictBag(DataBag):
         qs = []
 
         # first, let's do the keyword args, those are straightforward
-        for k,v in ka.iteritems():
+        for k,v in ka.items():
             qs.append( Q(k) == v )
 
         # now let's build the query objects, *a should be a list of Q objs
@@ -541,7 +537,7 @@ class DictBag(DataBag):
 
         qs = []
 
-        for k,v in qdict.iteritems():
+        for k,v in qdict.items():
             if not isinstance(v, dict):
                 # treat like normal keyword match {'y':111}
                 qs.append( Q(k) == v)
@@ -549,7 +545,7 @@ class DictBag(DataBag):
                 # OPTIMIZE - does not check for formatting other than an
                 # existing op...
                 # dictionary.. for now assume it's formatted properly
-                for o_, val in v.iteritems():
+                for o_, val in v.items():
                     if o_ not in ops:
                         raise NotImplementedError(
                             "Non-supported operator detected: " + k
@@ -593,5 +589,4 @@ class DictBag(DataBag):
                 # I DON'T KNOW YOU
                 raise TypeError('query must be dict or Q object')
         return self._findQ( *qs, **kwa )
-
 

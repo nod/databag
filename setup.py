@@ -8,11 +8,12 @@ setup(
     name='databag',
     version=VERSION,
     description='Put your data in a bag and get it back out again',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
     author='Jeremy Kelley',
     author_email='jeremy@33ad.org',
     url='https://github.com/nod/databag',
-    packages=['databag', 'databag.contrib'],
+    packages=['databag'],
+    package_dir={'':'src'},
     classifiers=(
         'License :: OSI Approved :: MIT License',
         "Development Status :: 4 - Beta",
@@ -20,8 +21,5 @@ setup(
         'Programming Language :: Python',
         "Topic :: Utilities",
         "Topic :: Database",
-        "Programming Language :: Python :: 2.6",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.2",
         ),
     )
