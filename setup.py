@@ -22,4 +22,5 @@ setup(
         "Topic :: Utilities",
         "Topic :: Database",
         ),
+    python_requires='>=3.6'
     )
