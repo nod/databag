@@ -115,6 +115,16 @@ False
 >>> [p for p in d.find(20 < age < 50) ]
 [(u'fachVqv6RxsmCXAZgJMJ5p', {u'age': 23, u'name': u'joe'}),
     (u'fpC7cAtx2ZQLadprQR7aa6', {u'age': 44, u'name': u'sue'})]
+```
+
+
+There's also some syntactic sugar that lets you also use a Q object directly
+if the key name is a proper symbol name in python.
+
+```
+>>> [p for p in d.find(20 < Q.age < 50) ]
+[(u'fachVqv6RxsmCXAZgJMJ5p', {u'age': 23, u'name': u'joe'}),
+    (u'fpC7cAtx2ZQLadprQR7aa6', {u'age': 44, u'name': u'sue'})]
 >>>
 ```
 

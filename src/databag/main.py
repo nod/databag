@@ -218,7 +218,13 @@ class DataBag(object):
         return cur.fetchone() is not None
 
 
-class Q(object):
+class Qmeta(type):
+    """ allows us some syntactic sugar for attr access """
+    def __getattr__(cls, key):
+        return Q(key)
+
+
+class Q(metaclass=Qmeta):
 
     """
     builds queries for dictbag instances using find()

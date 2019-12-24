@@ -45,6 +45,3 @@ class TestORM(unittest.TestCase):
         self.assertTrue(isinstance(f0._created_ts, datetime))
 
 
-
-
-
