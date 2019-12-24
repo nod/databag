@@ -165,6 +165,6 @@ samething = SomeThing.grab(k)
 
 # or search for it with the same syntax as DictBag, but get obj instead
 otherthing = SomeThing.find_one(num=23) # just one
-things = list(SomeThing.find(Q>19)) # returns a generator, so list exhausts it
+things = list(SomeThing.find(Q('num')>19)) # returns a generator, so list exhausts it
 ```
 
