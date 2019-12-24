@@ -380,6 +380,10 @@ class QuerySetMixin(object):
     def test_ne(self):
         assert 3 == len( [ 1 for i in self.dbag.find({'x':{'$ne':50}}) ] )
 
+    def test_qmeta(self):
+        assert 2 == len( list( self.dbag.find(Q.x <= 50) ) )
+        assert 3 == len( list( self.dbag.find(Q.x >= 50) ) )
+
 
 class TestQueriesNoIndexes(QuerySetMixin, unittest.TestCase):
 
