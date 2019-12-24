@@ -139,3 +139,32 @@ False
   unversioned and overwrite recent updates w/o cascading the historical change
   to records.
 
+# DataBag ORM
+
+There are times an ORM makes life a little easier.
+
+```python3
+from databag.orm.model import set_db_path, Model, Field, IntField, Q
+
+set_db_path(':memory:')
+
+# define one
+class SomeThing(Model):
+    thingname = Field(str)
+    num = IntField()
+
+# make and save one
+mything = SomeThing(thingname='oobleck', num=23).save()
+
+# use one
+print(mything.name)
+
+# get it from db again
+k = mything.key
+samething = SomeThing.grab(k)
+
+# or search for it with the same syntax as DictBag, but get obj instead
+otherthing = SomeThing.find_one(num=23) # just one
+things = list(SomeThing.find(Q>19)) # returns a generator, so list exhausts it
+```
+
