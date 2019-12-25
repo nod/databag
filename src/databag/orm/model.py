@@ -1,9 +1,6 @@
 
-import json
-from datetime import datetime, timedelta
-
 from databag import DictBag, Q
-from .field import Field, IntField, DateTimeField
+from .field import Field, IntField, DateTimeField, StrField
 
 
 class MissingDBConnection(Exception): pass
@@ -33,24 +30,36 @@ class Model:
     _key = None
     __fields = None
     __db = None
+    __values = None
 
     def __init__(self, key=None, **ka):
+        self._update_fields()
+        self.__values = {}
         self._key = key
         for k,a in ka.items():
             setattr(self, k, a)
-        self._update_fields()
+
+    def __setitem__(self, k, val):
+        self.__values[k] = val
+
+    def __getitem__(self, k):
+        # instance[k] should always return the raw value I know about
+        # we assume other access methods have run through the field's default
+        # setters by now
+        return self.__values.get(k)
 
     @classmethod
     def _update_fields(cls):
         """ update the fields dict """
         cls.__fields = {}
         for k in dir(cls):
-            attr = getattr(cls, k)
-            if not isinstance(attr, Field): continue
-            cls.__fields[k] = attr
+            fld = getattr(cls, k)
+            if not isinstance(fld, Field): continue
+            fld.set_field_name(k)
+            cls.__fields[k] = fld
 
     def to_d(self):
-        return { k:v.getval(to_json=True) for k,v in self.__fields.items() }
+        return { k:getattr(self, k) for k in self.__fields }
 
     @classmethod
     def grab(cls, key):
@@ -86,13 +95,14 @@ class Model:
 
     @classmethod
     def from_d(cls, some_dict):
-        if not cls.__fields: cls._update_fields()
         key = some_dict.get(cls.key_field(), None)
         obj = cls(key)
         # be generous, add all of dict to model
-        # for k,v in cls.__fields.items():
-        for k,v in some_dict.items():
-            setattr(obj,k,v)
+        for k,f in cls.__fields.items():
+        # for k,v in some_dict.items():
+            val = some_dict.get(k)
+            if val is not None:
+                setattr(obj,k,f._from_json(val))
         return obj
 
     def save(self):
