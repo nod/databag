@@ -3,11 +3,11 @@ import unittest
 from datetime import datetime
 
 from databag import DictBag, Q
-from databag.orm.model import Field, IntField, Model, set_db_path
+from databag.orm import Field, IntField, StrField, Model, set_db_path
 
 
 class Faker(Model):
-    name = Field(str)
+    name = StrField()
     age = IntField()
 
 
@@ -31,17 +31,20 @@ class TestORM(unittest.TestCase):
         k,just_max = Faker.find_one(name='max')
         self.assertEqual(just_max.name, 'max')
 
+    def test_default_fields(self):
+        null0 = Faker()
+        print("NULL0", null0.to_d())
+        self.assertEqual(null0.name, '')
+        self.assertEqual(null0.age, 0)
+
     def test_grab(self):
         f0 = Faker(name="joe", age=10).save()
         t0 = Faker.grab(f0.key)
         self.assertEqual(t0.key, f0.key)
 
-    def test_field_type(self):
-        f0 = Faker(name="mary", age="9").save()
-        self.assertEqual(f0.age, 9)
-
     def test_created_ts(self):
         f0 = Faker(name="bill", age=44)
+        print("CTS", f0._created_ts)
         self.assertTrue(isinstance(f0._created_ts, datetime))
 
 
