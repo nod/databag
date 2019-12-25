@@ -11,7 +11,7 @@ testx: venv
 	$(VENV_DIR)/bin/pytest -x
 
 clean:
-	rm -rf $(VENV_DIR) $(PERF_DB)
+	rm -rf $(VENV_DIR) $(PERF_DB) build/ dist/
 	find . -type dir -name __pycache__ | xargs rm -rf
 	find . -type dir -name databag.egg-info | xargs rm -rf
 
