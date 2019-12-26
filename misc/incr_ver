@@ -1,0 +1,16 @@
+#!/bin/sh
+
+my_name=$0
+version_fname=$1
+
+if [ -z $version_fname ]; then
+    echo $my_name path/to/VERSION/file
+    echo file should look like major.minor.revision
+    exit 1
+fi
+
+echo incrementing version in file $version_fname
+
+tmpfile=`mktemp ".${version_fname}.XX"` || exit 1
+awk -F. '{print $1"."$2"."$3+1}' < $version_fname > $tmpfile
+mv $tmpfile $version_fname

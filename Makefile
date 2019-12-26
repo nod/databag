@@ -4,6 +4,7 @@ PERF_DB=perfdb.sqlite3
 
 DEFAULT=test
 
+
 test: venv
 	$(VENV_DIR)/bin/pytest
 
@@ -27,6 +28,13 @@ perf: venv
 	$(VENV_DIR)/bin/python src/tests/perf.py $(PERF_DB)
 	@ echo Running perf with memory db
 	$(VENV_DIR)/bin/python src/tests/perf.py ":memory:"
+
+bumpver:
+	@ misc/incr_ver VERSION
+
+tagproj:
+	git tag -a v`cat VERSION`
+	git push --tags
 
 pkg: venv
 	$(VENV_DIR)/bin/pip install --upgrade setuptools wheel
