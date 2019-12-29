@@ -14,7 +14,7 @@ setuptools.setup(
     author='Jeremy Kelley',
     author_email='jeremy@33ad.org',
     url='https://github.com/nod/databag',
-    packages=['databag'],
+    packages=['databag', 'databag.orm'],
     package_dir={'':'src'},
     classifiers=[
         'License :: OSI Approved :: MIT License',
